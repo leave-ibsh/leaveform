@@ -1581,6 +1581,7 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
     .portal-home-current { grid-template-columns: 48px minmax(0, 1fr) auto; }
 
     .portal-bottom-nav {
+        display: none;
         position: fixed;
         left: 0;
         right: 0;
@@ -1588,7 +1589,6 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
         z-index: 60;
         min-height: calc(66px + env(safe-area-inset-bottom));
         padding: 8px 10px max(8px, env(safe-area-inset-bottom));
-        display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 4px;
         border-top: 1px solid var(--line);
@@ -1596,6 +1596,10 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
         backdrop-filter: blur(20px) saturate(150%);
         -webkit-backdrop-filter: blur(20px) saturate(150%);
         box-shadow: 0 -12px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    body[data-mscreen="overview"] .portal-bottom-nav {
+        display: grid;
     }
 
     .portal-bottom-nav button {

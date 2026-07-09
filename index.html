@@ -2197,7 +2197,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="portal-ui.css">
+    <link rel="stylesheet" href="portal-ui.css?v=20260709-mobile-nav-fixed">
 </head>
 <body data-mscreen="login">
     <!-- ═══ Mobile iOS Shell (≤640px only — desktop is unaffected) ═══ -->
@@ -2296,12 +2296,6 @@
                     <div class="portal-home-recent" id="mHomeRecent"></div>
                 </section>
             </div>
-            <nav class="portal-bottom-nav" aria-label="Mobile navigation">
-                <button type="button" class="is-active" data-mobile-nav="home" onclick="mGoOverview()"><span>⌂</span><small>Home</small></button>
-                <button type="button" class="portal-bottom-primary" data-mobile-nav="apply" onclick="mGoApply()"><span>＋</span><small>New leave</small></button>
-                <button type="button" data-mobile-nav="records" onclick="mGoRecords()"><span>▤</span><small>Records</small></button>
-                <button type="button" data-mobile-nav="progress" onclick="mGoProgress()"><span>○</span><small>Progress</small></button>
-            </nav>
         </section>
         <!-- 03 · Apply (existing #leaveForm is moved into mApplyContent on init) -->
         <section id="mScreenApply" class="m-screen" data-screen="apply">
@@ -2346,6 +2340,12 @@
                 <button type="button" class="m-btn-ghost" onclick="mGoOverview()">Back to overview</button>
             </div>
         </section>
+        <nav class="portal-bottom-nav" aria-label="Mobile navigation">
+            <button type="button" class="is-active" data-mobile-nav="home" onclick="mGoOverview()"><span>⌂</span><small>Home</small></button>
+            <button type="button" class="portal-bottom-primary" data-mobile-nav="apply" onclick="mGoApply()"><span>＋</span><small>New leave</small></button>
+            <button type="button" data-mobile-nav="records" onclick="mGoRecords()"><span>▤</span><small>Records</small></button>
+            <button type="button" data-mobile-nav="progress" onclick="mGoProgress()"><span>○</span><small>Progress</small></button>
+        </nav>
     </div>
     <!-- Auth Gate -->
     <div class="auth-gate" id="authGate">
@@ -4749,14 +4749,16 @@
             }
             return updated;
         }
-        async function parentSignMakeupLeave(leaveId) {
+        async function parentSignMakeupLeave(leaveId, options = {}) {
             const leave = AppDB.leave().find(l => l.id === leaveId);
             if (!leave) return;
             if (!isMakeupApprovalRequest(leave)) {
                 await parentApproveLeave(leaveId);
                 return;
             }
-            await parentApproveLeave(leaveId, { redirectToPrint: true });
+            await parentApproveLeave(leaveId, {
+                redirectToPrint: options.redirectToPrint !== false
+            });
         }
         function _promptReasonInline(title) {
             const reason = window.prompt(title + '\n\n(Reason is required)');
@@ -5504,7 +5506,7 @@
             if (!leaveId) return;
             const leave = AppDB.leave().find(item => item.id === leaveId);
             if (leave && isMakeupApprovalRequest(leave)) {
-                await parentSignMakeupLeave(leaveId);
+                await parentSignMakeupLeave(leaveId, { redirectToPrint: false });
             } else {
                 await parentApproveLeave(leaveId);
             }
@@ -5520,9 +5522,15 @@
             }
             await parentRejectLeave(leaveId);
         }
-        function printReviewedLeave() {
+        async function printReviewedLeave() {
             const leaveId = PARENT_REVIEW_LEAVE_ID;
             if (!leaveId) return;
+            const leave = AppDB.leave().find(item => item.id === leaveId);
+            if (leave && isMakeupApprovalRequest(leave) && isLeaveAtParentStage(leave)) {
+                closeParentReview();
+                await parentSignMakeupLeave(leaveId, { redirectToPrint: true });
+                return;
+            }
             window.open('leave-form.html?id=' + encodeURIComponent(leaveId) + '&paper=1', '_blank', 'noopener');
         }
         function mScrollHomeTo(id) {
