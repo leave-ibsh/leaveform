@@ -1,0 +1,527 @@
+rules_version = '2';
+
+// =============================================================================
+// IBSH Tardy & Leave – Firestore Security Rules (Role-based, v2)
+// =============================================================================
+// Project : tardy-and-leave
+// Auth模式 :
+//   - admin.html / admin-b.html / index.html        -> Firebase Auth with email
+//   - tardy.html                                    → Firebase Anonymous Sign-In
+//     (校門口 kiosk，免登入即用；只能讀 /publicStudents、/publicSettings、
+//      /holidays，並寫 /tardies。完全看不到 /students 的家長個資。)
+//
+// 角色判斷 :
+//   - 「Staff」=  使用者 email 在 /settings/app.staffEmails 陣列裡
+//   - 「Roles」=  /settings/app.staffRoleMap[email] 陣列。可能值：
+//       - admin       → 管理 / 查看權限（不可代替關卡簽名）
+//       - homeroom    → 看 / 簽自己班的學生 (只看 staffHomeroomMap[email] 對應的班)
+//       - discipline  → 學務處：管 walk-in、簽 discipline 階段
+//       - dean        → 主任：簽 dean 階段
+//   - shared-db.js 會在 _cloneSettings() 自動衍生 staffEmails / staffRoleMap /
+//     staffHomeroomMap 三個 flat lookup，admin 改 staffUsers 即生效。
+//
+// Bootstrap :
+//   - Setup mode 已移除。第一個能登入 admin.html 的使用者必須是
+//     firebase-config.js 裡的 __SUPER_ADMINS__ 之一（也寫死在下面 isSuperAdmin）。
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // 匿名 (kiosk) 身份：有 auth 但沒驗證的 email — 用於 tardy.html。
+    function isAnonymous() {
+      return request.auth != null
+        && (!('email_verified' in request.auth.token)
+            || request.auth.token.email_verified != true);
+    }
+
+    function userEmail() {
+      return request.auth != null && request.auth.token.email is string
+        ? request.auth.token.email.lower()
+        : '';
+    }
+
+    function hasUserEmail() {
+      return isSignedIn()
+        && userEmail() != ''
+        && request.auth.token.email_verified == true;
+    }
+
+    function settingsDoc() {
+      return get(/databases/$(database)/documents/settings/app).data;
+    }
+
+    function staffEmails() {
+      return exists(/databases/$(database)/documents/settings/app)
+        ? settingsDoc().get('staffEmails', [])
+        : [];
+    }
+
+    function userRoles() {
+      return exists(/databases/$(database)/documents/settings/app)
+        ? settingsDoc().get('staffRoleMap', {}).get(userEmail(), [])
+        : [];
+    }
+
+    function userHomeroomClass() {
+      return exists(/databases/$(database)/documents/settings/app)
+        ? settingsDoc().get('staffHomeroomMap', {}).get(userEmail(), '')
+        : '';
+    }
+
+    // 「超級管理者」清單 — 寫死在規則裡，永遠通過所有檢查。
+    // 變更請同步更新 firebase-config.js 的 window.__SUPER_ADMINS__。
+    function isSuperAdmin() {
+      return hasUserEmail() && userEmail() in [
+        'leave@ibsh.tw'
+      ];
+    }
+
+    function isStaff() {
+      return isSuperAdmin()
+        || (hasUserEmail() && userEmail() in staffEmails());
+    }
+
+    function hasRole(role) {
+      return isSuperAdmin() || (hasUserEmail() && role in userRoles());
+    }
+
+    function isAdmin()      { return isSuperAdmin() || hasRole('admin'); }
+    function isHomeroom()   { return hasRole('homeroom'); }
+    function isDiscipline() { return hasRole('discipline'); }
+    function isDean()       { return hasRole('dean'); }
+
+    // 該 staff 是不是「能管理這筆學生資料」？
+    // - admin / discipline / dean 都可
+    // - 純 homeroom：只能管自己班；支援 12A / G12A 兩種舊新格式
+    function classMatchesUserHomeroom(recordData) {
+      return userHomeroomClass() != ''
+        && (
+          recordData.get('className', '') == userHomeroomClass()
+          || recordData.get('className', '') == ('G' + userHomeroomClass())
+          || ('G' + recordData.get('className', '')) == userHomeroomClass()
+        );
+    }
+
+    function canManageStudentRecord(recordData) {
+      return isAdmin() || isDiscipline() || isDean()
+        || (isHomeroom() && classMatchesUserHomeroom(recordData));
+    }
+
+    function workflowStages() {
+      return exists(/databases/$(database)/documents/settings/app)
+        ? settingsDoc().get('approvalWorkflow', [])
+        : [];
+    }
+
+    function currentWorkflowStage(leaveData) {
+      let stages = workflowStages();
+      let idx = leaveData.get('currentStageIndex', 0);
+      return idx is int && idx >= 0 && idx < stages.size()
+        ? stages[idx]
+        : {};
+    }
+
+    // 該 staff 是否可做「簽核流程」更新？
+    // admin / super admin 只可查看簽核狀態，不可簽名或推進關卡。
+    // 非 admin staff 只能簽自己角色對應的當前關卡。
+    function canSignLeaveWorkflow(leaveData) {
+      let stage = currentWorkflowStage(leaveData);
+      let approverType = stage.get('approverType', 'staff');
+      let role = stage.get('staffRole', '');
+      return !isAdmin()
+        && approverType == 'staff'
+        && (
+          (role == '' && (isHomeroom() || isDiscipline() || isDean()))
+          || (role == 'homeroom' && isHomeroom() && classMatchesUserHomeroom(leaveData))
+          || (role == 'discipline' && isDiscipline())
+          || (role == 'dean' && isDean())
+      );
+    }
+
+    function changedLeaveKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    function isWalkinLeaveData(leaveData) {
+      return leaveData.get('isWalkin', false) == true
+        || leaveData.get('source', '') in ['walkin', 'walk-in']
+        || leaveData.get('submittedByRole', '') == 'staff';
+    }
+
+    // Time/return edits are not signatures, so staff who can manage the record
+    // may still maintain those fields.
+    function isNonWorkflowLeaveUpdate() {
+      return changedLeaveKeys().hasOnly([
+        'fromDate',
+        'toDate',
+        'fromTime',
+        'toTime',
+        'startTime',
+        'endTime',
+        'periods',
+        'totalPeriods',
+        'fullDay',
+        'returnConfirmed',
+        'returnDate'
+      ]);
+    }
+
+    function isWorkflowLeaveUpdate() {
+      return changedLeaveKeys().hasOnly([
+        'stageHistory',
+        'currentStageIndex',
+        'status'
+      ]);
+    }
+
+    function appendedWorkflowEntry() {
+      return request.resource.data.get('stageHistory', []).size() ==
+              resource.data.get('stageHistory', []).size() + 1
+        && request.resource.data
+              .stageHistory[resource.data.get('stageHistory', []).size()]
+              .get('stageId', '') == currentWorkflowStage(resource.data).get('id', '')
+        && request.resource.data
+              .stageHistory[resource.data.get('stageHistory', []).size()]
+              .get('by', '').lower() == userEmail()
+        && request.resource.data
+              .stageHistory[resource.data.get('stageHistory', []).size()]
+              .get('action', '') in ['approved', 'rejected'];
+    }
+
+    function staffWorkflowTransitionOk() {
+      let action = request.resource.data
+        .stageHistory[resource.data.get('stageHistory', []).size()]
+        .get('action', '');
+      let oldIndex = resource.data.get('currentStageIndex', 0);
+      let newIndex = request.resource.data.get('currentStageIndex', 0);
+      let newStatus = request.resource.data.get('status', 'pending');
+      return resource.data.get('status', 'pending') == 'pending'
+        && appendedWorkflowEntry()
+        && (
+          (action == 'approved'
+            && newStatus in ['pending', 'approved']
+            && newIndex >= oldIndex
+            && (newStatus == 'approved' || newIndex > oldIndex))
+          || (action == 'rejected'
+            && newStatus == 'rejected'
+            && newIndex == oldIndex)
+        );
+    }
+
+    function isContactSnapshotUpdate() {
+      return changedLeaveKeys().hasOnly([
+        'parentEmails',
+        'studentEmails'
+      ]);
+    }
+
+    // Walk-in records are office-created make-up form records. Admin /
+    // discipline / dean may archive or complete those without being treated
+    // as online leave approval signers.
+    function isWalkinLifecycleUpdate() {
+      return isWalkinLeaveData(resource.data)
+        && changedLeaveKeys().hasOnly([
+          'status',
+          'stageHistory',
+          'reconciliationStatus',
+          'reconciledByLeaveId',
+          'reconciledAt',
+          'reconciledBy',
+          'archived',
+          'archiveReason',
+          'archivedAt',
+          'archivedBy',
+          'fromDate',
+          'toDate',
+          'fromTime',
+          'toTime',
+          'startTime',
+          'endTime',
+          'periods',
+          'totalPeriods',
+          'returnConfirmed',
+          'returnDate'
+        ]);
+    }
+
+    // 該使用者是不是這筆假單所屬學生的家長？
+    // shared-db.js 會把學生/家長 email 寫入 leaves.studentEmails / leaves.parentEmails。
+    function isLeaveParent(leaveData) {
+      return hasUserEmail()
+        && userEmail() in leaveData.get('parentEmails', []);
+    }
+
+    function isLeaveStudent(leaveData) {
+      return hasUserEmail()
+        && userEmail() in leaveData.get('studentEmails', []);
+    }
+
+    function isStudentSelf(studentData) {
+      return hasUserEmail()
+        && (
+          studentData.get('email', '') == userEmail()
+          || userEmail() in studentData.get('studentEmailList', [])
+        );
+    }
+
+    function isStudentParent(studentData) {
+      return hasUserEmail()
+        && (
+          userEmail() in studentData.get('parentEmailList', [])
+          || studentData.get('fatherEmail', '') == userEmail()
+          || studentData.get('motherEmail', '') == userEmail()
+          || studentData.get('parentEmail', '') == userEmail()
+        );
+    }
+
+    function canReadStudent(studentData) {
+      return canManageStudentRecord(studentData) || isStudentSelf(studentData) || isStudentParent(studentData);
+    }
+
+    function canReadLeave(leaveData) {
+      return canManageStudentRecord(leaveData)
+        || isLeaveStudent(leaveData)
+        || isLeaveParent(leaveData)
+        || (hasUserEmail() && leaveData.get('submittedBy', '') == userEmail());
+    }
+
+    // -------------------------------------------------------------------------
+    // Family (parent/student) stage-history validation
+    //   防止家長/學生偽造 staff 簽核：規則層強制 stageHistory 中每一筆
+    //   appended entry 的 `by` 必須等於呼叫者 email，且 status 不可由家長
+    //   端改為 'approved' (只能 pending → pending 或 pending → rejected)。
+    // -------------------------------------------------------------------------
+
+    // 家長/學生 CREATE 假單時，stageHistory 每一筆的 by 必須是建立者本人。
+    // 上限為 3 筆 (預設 workflow 至多會有 1 個 parent stage; 預留 2 筆容錯)。
+    function familyCreateHistoryOk(leaveData) {
+      return leaveData.get('stageHistory', []).size() <= 3
+        && (leaveData.get('stageHistory', []).size() < 1
+            || leaveData.stageHistory[0].get('by', '').lower() == userEmail())
+        && (leaveData.get('stageHistory', []).size() < 2
+            || leaveData.stageHistory[1].get('by', '').lower() == userEmail())
+        && (leaveData.get('stageHistory', []).size() < 3
+            || leaveData.stageHistory[2].get('by', '').lower() == userEmail());
+    }
+
+    // 家長/學生 UPDATE：只允許「append 一筆」的模式
+    function familyAppendedOneEntryBySelf() {
+      return request.resource.data.stageHistory.size() ==
+              resource.data.get('stageHistory', []).size() + 1
+        && request.resource.data
+              .stageHistory[resource.data.get('stageHistory', []).size()]
+              .get('stageId', '') == currentWorkflowStage(resource.data).get('id', '')
+        && request.resource.data
+              .stageHistory[resource.data.get('stageHistory', []).size()]
+              .get('by', '').lower() == userEmail()
+        && request.resource.data
+              .stageHistory[resource.data.get('stageHistory', []).size()]
+              .get('action', '') in ['approved', 'rejected'];
+    }
+
+    // 家長/學生 UPDATE：流程變遷限制
+    //   approved : status 維持 pending，且必須推進到下一個 staff stage
+    //   rejected : status 改 rejected，且停在原關卡
+    //   其他狀態變更 (尤其 → 'approved') 一律拒絕
+    function familyWorkflowTransitionOk() {
+      let action = request.resource.data
+        .stageHistory[resource.data.get('stageHistory', []).size()]
+        .get('action', '');
+      let oldIndex = resource.data.get('currentStageIndex', 0);
+      let newIndex = request.resource.data.get('currentStageIndex', 0);
+      let newStatus = request.resource.data.get('status', 'pending');
+      return resource.data.get('status', 'pending') == 'pending'
+        && (
+          (action == 'approved'
+            && newStatus == 'pending'
+            && newIndex > oldIndex)
+          || (action == 'rejected'
+            && newStatus == 'rejected'
+            && newIndex == oldIndex)
+        );
+    }
+
+    function canCreateLeave(leaveData) {
+      return (isStaff()
+          && canManageStudentRecord(leaveData)
+          && (!isWalkinLeaveData(leaveData) || isAdmin()))
+        || (
+          hasUserEmail()
+          && leaveData.get('submittedBy', '').lower() == userEmail()
+          && leaveData.get('submittedByRole', '') in ['parent', 'student']
+          && (
+            userEmail() in leaveData.get('studentEmails', [])
+            || userEmail() in leaveData.get('parentEmails', [])
+          )
+          && familyCreateHistoryOk(leaveData)
+        );
+    }
+
+    // 家長簽核：append 一筆 by==self 的 stageHistory entry。
+    function isLeaveFamilyApproval() {
+      return (isLeaveParent(resource.data) || isLeaveStudent(resource.data))
+        && resource.data.get('status', 'pending') == 'pending'
+        && currentWorkflowStage(resource.data).get('approverType', '') == 'parent'
+        && changedLeaveKeys().hasOnly(['stageHistory', 'currentStageIndex', 'status'])
+        && familyAppendedOneEntryBySelf()
+        && familyWorkflowTransitionOk();
+    }
+
+    // 家長/學生在補假單流程中同步補登記欄位 (不動 stageHistory)。
+    function isLeaveFamilyReconciliation() {
+      return (isLeaveParent(resource.data) || isLeaveStudent(resource.data))
+        && changedLeaveKeys().hasOnly([
+          'reconciliationStatus',
+          'reconciledByLeaveId',
+          'reconciledAt',
+          'reconciledBy'
+        ]);
+    }
+
+    function isValidTardyCreate() {
+      return request.resource.data.keys().hasAll(['studentNo', 'className', 'date', 'createdAt'])
+        && request.resource.data.keys().hasOnly([
+          'studentNo',
+          'studentId',
+          'className',
+          'seatNo',
+          'chineseName',
+          'englishName',
+          'reason',
+          'date',
+          'createdAt'
+        ]);
+    }
+
+    // ---------------------------------------------------------------------
+    // /students/{id}
+    //   - read   : staff, the student, or that student's parent/guardian
+    //              (匿名 kiosk 一律不可讀，避免家長 email/電話外洩)
+    //   - write  : 只有 super admin
+    // ---------------------------------------------------------------------
+    match /students/{studentId} {
+      allow read:   if canReadStudent(resource.data);
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // /publicStudents/{id}
+    //   shared-db.js 在 admin 寫 /students 時自動同步一份精簡版到這裡，
+    //   僅包含 studentNo / className / seatNo / 中英文姓名，**不含**
+    //   家長 email / 電話 / parentEmailList。供 tardy.html 匿名讀取。
+    //   - read  : 任何登入身份（含匿名 kiosk）
+    //   - write : 只有 super admin
+    // ---------------------------------------------------------------------
+    match /publicStudents/{studentId} {
+      allow read:  if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // /leaves/{id}
+    //   - read   : staff, leave student, leave parent/guardian, or submitter
+    //   - create : staff or a signed-in student/parent whose email is embedded in the leave snapshot
+    //   - update : staff 可簽自己的關卡；admin 可做非簽核維護但不可代簽；
+    //              leaves.parentEmails / studentEmails 內的學生或家長只可更新簽核/補假單流程欄位
+    //   - delete : 只有 admin
+    // ---------------------------------------------------------------------
+    match /leaves/{leaveId} {
+      allow read:   if canReadLeave(resource.data);
+      allow create: if canCreateLeave(request.resource.data);
+      allow update: if hasUserEmail() && (
+        // Staff 簽核流程 — admin / super admin 不可代簽
+        (isStaff() && canSignLeaveWorkflow(resource.data) && isWorkflowLeaveUpdate() && staffWorkflowTransitionOk())
+        // Staff 做非簽核維護（例如補假單、修正時間）
+        || (isStaff() && canManageStudentRecord(resource.data) && isNonWorkflowLeaveUpdate())
+        // Admin may sync leave contact snapshots after student parent email changes.
+        || (isStaff() && isSuperAdmin() && isContactSnapshotUpdate())
+        // Office-created walk-in records: archive / reconcile lifecycle updates
+        || (isStaff() && isAdmin() && isWalkinLifecycleUpdate())
+        // 家長補簽 — 嚴格 append-only，僅可加自己簽的那一筆
+        || isLeaveFamilyApproval()
+        // 家長/學生補假單同步登記欄位
+        || isLeaveFamilyReconciliation()
+      );
+      allow delete: if isSuperAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // /tardies/{id}
+    //   - read   : staff only (匿名 kiosk 不可讀，避免被列舉)
+    //   - create : staff OR 匿名 kiosk (需通過 isValidTardyCreate)
+    //   - update : staff 必須能管 (homeroom 限自己班)
+    //   - delete : 只有 super admin
+    // ---------------------------------------------------------------------
+    match /tardies/{tardyId} {
+      allow read:   if isStaff();
+      allow create: if (isStaff() || isAnonymous()) && isValidTardyCreate();
+      allow update: if isStaff() && canManageStudentRecord(resource.data);
+      allow delete: if isSuperAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // /holidays/{id}
+    //   - read  : 任何登入身份 (含匿名 kiosk) — tardy.html 需要這份資料
+    //   - write : 只有 super admin
+    // ---------------------------------------------------------------------
+    match /holidays/{holidayId} {
+      allow read:   if isSignedIn();
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin();
+      allow delete: if isSuperAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // /settings/{id}
+    //   - read  : staff only, because it contains staff routing and email webhook config
+    //   - write : 只有 super admin
+    //   特例 : 如果 staffEmails 整個還沒建立，super admin 仍可初始化
+    // ---------------------------------------------------------------------
+    match /settings/{docId} {
+      allow read: if isStaff();
+      allow write: if isSuperAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // /publicSettings/{id}
+    //   - read  : 任何登入身份 (含匿名 kiosk) — tardy.html 需要這份資料
+    //              (這份是 staff-list / webhook 等敏感資料 *被剔除* 後的版本)
+    //   - write : super admin only. shared-db.js writes a sanitized copy when settings change.
+    // ---------------------------------------------------------------------
+    match /publicSettings/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // /signatures/{email_lowercase}
+    //   - read  : staff or the signature owner
+    //   - write : 只能寫入「自己 email 的那一份」；admin 可以協助管理
+    // ---------------------------------------------------------------------
+    match /signatures/{email} {
+      allow read: if isStaff() || (hasUserEmail() && userEmail() == email);
+      allow create, update: if hasUserEmail() && (
+        userEmail() == email || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // 預設拒絕：任何上面沒列到的路徑一律拒絕讀寫
+    // ---------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
