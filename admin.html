@@ -15,7 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=20260706-notify3"></script>
-<script src="shared-db.js?v=20260706-notify3"></script>
+<script src="shared-db.js?v=20260713-grade1"></script>
 <script src="signature-dialog.js?v=20260706-notify3"></script>
 <script src="notification-service.js?v=20260706-notify3"></script>
 <style>
@@ -70,6 +70,11 @@
   --shadow-sm: 0 2px 8px -3px rgba(34, 34, 34, 0.08);
   --shadow: 0 16px 34px -24px rgba(34, 34, 34, 0.28);
   --shadow-lg: 0 28px 64px -34px rgba(34, 34, 34, 0.35);
+  --motion-fast: 140ms;
+  --motion-base: 240ms;
+  --motion-slow: 420ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
 }
 /* Dark Theme Overrides */
 [data-theme="dark"] {
@@ -122,11 +127,20 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #bdbdbd; }
 a { color: var(--accent-hover); text-decoration: none; transition: all 0.2s; }
 a:hover { color: var(--accent); }
-button { cursor: pointer; font-family: inherit; font-size: 0.95rem; border: none; outline: none; }
+button { cursor: pointer; font-family: inherit; font-size: 0.95rem; border: none; }
 button:disabled { cursor: not-allowed; opacity: 0.5; }
 input, select, textarea { font-family: inherit; font-size: 0.95rem; }
 table { border-collapse: collapse; width: 100%; }
 [hidden] { display: none !important; }
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid rgba(22, 129, 95, 0.44);
+  outline-offset: 2px;
+}
 /* Sidebar */
 .sidebar {
   width: var(--sidebar-w); min-height: 100vh; background: var(--surface);
@@ -267,8 +281,9 @@ table tbody tr:hover { background: var(--bg-base); }
 .flow-track { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 /* Modals */
 .modal-overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); backdrop-filter: blur(4px); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
-.modal-overlay.show { display: flex; }
+.modal-overlay.show { display: flex; animation: modalBackdropIn var(--motion-fast) ease-out both; }
 .modal { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); border: 1px solid var(--line); }
+.modal-overlay.show .modal { animation: modalPanelIn var(--motion-base) var(--ease-out) both; }
 .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
 .modal-header h3 { font-size: 1.1rem; font-weight: 700; color: var(--text-dark); }
 .modal-close { background: none; color: var(--text-muted); font-size: 1.5rem; transition: color 0.2s; }
@@ -282,6 +297,15 @@ table tbody tr:hover { background: var(--bg-base); }
 .toast-error { border-left-color: var(--danger); }
 .toast-info { border-left-color: var(--info); }
 @keyframes slideIn { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes modalBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPanelIn { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes metricChanged { 0% { transform: translateY(3px); opacity: .62; } 55% { transform: translateY(-2px); opacity: 1; } 100% { transform: translateY(0); } }
+.metric-updated { animation: metricChanged var(--motion-slow) var(--ease-out); }
+.bento-card,
+.card,
+.attendance-row,
+.tcm-card,
+.portal-status-pill { transition: transform var(--motion-base) var(--ease-out), box-shadow var(--motion-base), border-color var(--motion-fast), background-color var(--motion-fast); }
 /* Utility */
 .section { display: none; animation: fadeIn 0.3s ease; }
 .section.active { display: block; }
@@ -400,7 +424,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); c
 .attendance-tag.mental { background: #f3e8ff; color: #7e22ce; }
 .attendance-tag.official { background: #dbeafe; color: #1d4ed8; }
 .attendance-tag.funeral { background: #e5e7eb; color: #374151; }
-.attendance-tag.pending { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; animation: attendancePulse 2s infinite; }
+.attendance-tag.pending { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; animation: attendancePulse 1.8s ease-out 2; }
 @keyframes attendancePulse { 0% { box-shadow: 0 0 0 0 rgba(245,158,11,.36); } 70% { box-shadow: 0 0 0 6px rgba(245,158,11,0); } 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); } }
 .attendance-perfect { display: inline-flex; align-items: center; gap: 6px; color: var(--line-strong); font-size: .84rem; font-weight: 700; }
 .attendance-perfect svg { width: 16px; height: 16px; fill: currentColor; }
@@ -424,6 +448,13 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); c
 .admin-auth-head {
   display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px;
 }
+.admin-auth-head-actions { display: flex; align-items: center; gap: 8px; }
+.admin-language-toggle {
+  min-width: 42px; min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); border-radius: 999px; color: var(--text-main); background: var(--surface-2);
+  font-size: .75rem; font-weight: 800; transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
+}
+.admin-language-toggle:hover { color: var(--text-dark); background: var(--surface-hover); transform: translateY(-1px); }
 .admin-auth-card .auth-theme-toggle {
   width: 40px; height: 40px; min-width: 40px;
   color: var(--text-dark); background: var(--surface-2); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
@@ -454,6 +485,13 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); c
 .admin-user-chip .role { background: var(--accent-soft); color: var(--accent-hover); padding: 4px 10px; border-radius: 999px; font-weight: 700; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; }
 .admin-user-chip button { background: none; color: var(--text-muted); font-weight: 600; font-size: 0.8rem; }
 .admin-user-chip button:hover { color: var(--danger); text-decoration: underline; }
+.grade-preview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+.grade-preview-stat { padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-2); }
+.grade-preview-stat span { display: block; color: var(--text-muted); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+.grade-preview-stat strong { display: block; margin-top: 4px; color: var(--text-dark); font-size: 1.65rem; line-height: 1; }
+.grade-preview-list { max-height: 150px; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-base); color: var(--text-main); font-size: .82rem; line-height: 1.55; }
+.grade-confirm-row { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; color: var(--text-main); font-size: .84rem; font-weight: 650; line-height: 1.45; }
+.grade-confirm-row input { flex: 0 0 auto; margin-top: 2px; }
 /* Floating Operations Dock - Frosted White Glass */
 .ops-dock {
   position: fixed; left: calc(var(--sidebar-w) + 32px); right: 32px; bottom: 24px; z-index: 430;
@@ -2851,9 +2889,9 @@ body.admin-b.tcm-active .topbar { padding-left: 16px; }
 .tcm-back { background: none; border: 0; padding: 6px 4px; font-size: 1.5rem; line-height: 1; color: var(--text-dark); cursor: pointer; }
 .tcm-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px 4px; }
 .tcm-stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; }
-.tcm-stat .kicker { font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.tcm-stat .kicker { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
 .tcm-stat strong { display: block; font-size: 2.2rem; font-weight: 900; color: var(--text-dark); line-height: 1.05; margin-top: 4px; }
-.tcm-stat .label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+.tcm-stat .label { font-size: 0.84rem; color: var(--text-muted); font-weight: 600; }
 .tcm-chip-row { display: flex; gap: 8px; padding: 10px 16px 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
 .tcm-chip-row::-webkit-scrollbar { display: none; }
 .tcm-chip { flex-shrink: 0; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--text-main); font-size: 0.82rem; font-weight: 700; cursor: pointer; white-space: nowrap; }
@@ -2866,11 +2904,11 @@ body.admin-b.tcm-active .topbar { padding-left: 16px; }
 .tcm-card-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--surface-2); color: var(--text-dark); display: grid; place-items: center; font-weight: 800; font-size: 0.9rem; flex-shrink: 0; }
 .tcm-card-id { flex: 1; min-width: 0; }
 .tcm-card-id .name { font-weight: 800; color: var(--text-dark); font-size: 0.97rem; line-height: 1.2; }
-.tcm-card-id .meta { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
-.tcm-badge { font-size: 0.62rem; font-weight: 800; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
+.tcm-card-id .meta { font-size: 0.82rem; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+.tcm-badge { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.05em; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; }
 .tcm-badge.urgent { background: var(--warning-bg); color: var(--warning); }
 .tcm-badge.walkin { background: var(--info-bg); color: var(--info); }
-.tcm-card-body { font-size: 0.84rem; color: var(--text-main); line-height: 1.4; }
+.tcm-card-body { font-size: 0.88rem; color: var(--text-main); line-height: 1.45; }
 .tcm-card-body .when { font-weight: 700; color: var(--text-dark); }
 .tcm-card-foot { display: flex; gap: 6px; }
 .tcm-card-foot .tcm-mini-btn { flex: 1; padding: 9px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); font-weight: 700; font-size: 0.82rem; cursor: pointer; color: var(--text-dark); }
@@ -2896,8 +2934,8 @@ body.admin-b.tcm-active .topbar { padding-left: 16px; }
 .tcm-chain-step.done { background: var(--success-bg); }
 .tcm-chain-step.current { background: var(--accent-soft); border: 1px solid var(--accent); }
 .tcm-chain-step.future { opacity: 0.6; }
-.tcm-chain-step .step-name { font-size: 0.78rem; font-weight: 800; color: var(--text-dark); display: flex; align-items: center; gap: 4px; }
-.tcm-chain-step .step-meta { font-size: 0.68rem; color: var(--text-muted); font-weight: 600; margin-top: 3px; }
+.tcm-chain-step .step-name { font-size: 0.82rem; font-weight: 800; color: var(--text-dark); display: flex; align-items: center; gap: 4px; }
+.tcm-chain-step .step-meta { font-size: 0.74rem; color: var(--text-muted); font-weight: 600; margin-top: 3px; }
 .tcm-detail-actions { position: fixed; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 10px; z-index: 5; }
 .tcm-detail-actions .tcm-bigbtn { flex: 1; padding: 14px; border-radius: 14px; font-weight: 800; font-size: 0.95rem; border: 0; cursor: pointer; }
 .tcm-detail-actions .tcm-bigbtn.primary { background: var(--success); color: #fff; }
@@ -2981,7 +3019,7 @@ body.admin-b.tcm-active:has(.tcm-screen[data-tcm-screen="detail"][data-tcm-activ
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-top: 1px solid var(--line);
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--tcm-tab-count, 5), minmax(0, 1fr));
   padding: 6px 0 calc(6px + env(safe-area-inset-bottom));
   z-index: 70;
   box-shadow: 0 -4px 24px -8px rgba(34, 34, 34, 0.08);
@@ -2995,41 +3033,66 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   background: none; border: 0; padding: 8px 4px 6px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 4px; color: var(--text-muted); cursor: pointer; font: inherit;
-  transition: color 0.15s;
+  transition: color var(--motion-fast), transform var(--motion-fast) var(--ease-out), background var(--motion-fast);
 }
-.tcm-tabbtn:active { color: var(--text-dark); }
+.tcm-tabbtn:active { color: var(--text-dark); transform: scale(.96); }
 .tcm-tabbtn svg { width: 22px; height: 22px; display: block; stroke: currentColor; stroke-width: 1.7; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.tcm-tabbtn .lbl { font-size: 0.66rem; font-weight: 700; letter-spacing: 0.01em; }
+.tcm-tabbtn .lbl { font-size: 0.72rem; font-weight: 750; letter-spacing: 0; }
 .tcm-tabbtn.active { color: var(--accent); }
-.tcm-tabbtn.active svg { stroke: var(--accent); }
+.tcm-tabbtn.active svg { stroke: var(--accent); animation: tcmTabIconIn var(--motion-base) var(--ease-out); }
 .tcm-tabbtn .badge { position: absolute; transform: translate(10px, -10px); background: var(--danger); color: #fff; font-size: 0.6rem; font-weight: 800; padding: 1px 5px; border-radius: 999px; min-width: 16px; text-align: center; line-height: 1.4; }
 .tcm-tabbtn-wrap { position: relative; display: flex; }
 .tcm-tabbtn-wrap > .tcm-tabbtn { flex: 1; }
+@keyframes tcmTabIconIn { from { opacity: .5; transform: translateY(3px) scale(.88); } to { opacity: 1; transform: translateY(0) scale(1); } }
+body.admin-auth-locked { overflow: hidden; }
+body.admin-auth-locked > .hamburger,
+body.admin-auth-locked > .sidebar-overlay,
+body.admin-auth-locked > .sidebar,
+body.admin-auth-locked > .main,
+body.admin-auth-locked > .tcm-app,
+body.admin-auth-locked > .tcm-tabbar,
+body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
+@media(max-width:520px) {
+  .grade-preview-grid { grid-template-columns: 1fr; }
+  .topbar-actions { width: 100%; justify-content: flex-end; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
 /* The legacy ≤720px display:none rule was removed — the mobile shell now
    surfaces the desktop sections inside .main, gated by body.tcm-active. */
 </style>
 </head>
-<body class="admin-b">
+<body class="admin-b admin-auth-locked">
 <!-- Admin Auth Gate -->
-<div class="admin-auth-gate" id="adminAuthGate">
+<div class="admin-auth-gate" id="adminAuthGate" role="region" aria-label="Admin sign in" aria-hidden="false">
   <div class="admin-auth-card">
     <div class="admin-auth-head">
-      <div class="auth-kicker">IBSH Leave Portal</div>
-      <button class="theme-toggle auth-theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle light or dark mode" title="Toggle theme">
-        <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-        </svg>
-        <svg class="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display: none;">
-          <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-        </svg>
-      </button>
+      <div class="auth-kicker" data-admin-i18n="brand">IBSH Leave Portal</div>
+      <div class="admin-auth-head-actions">
+        <button class="admin-language-toggle" type="button" onclick="toggleAdminLanguage()" aria-label="Switch language">中文</button>
+        <button class="theme-toggle auth-theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle light or dark mode" title="Toggle theme">
+          <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <svg class="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" style="display: none;">
+            <circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+      </div>
     </div>
-    <h1>Admin Console</h1>
-    <p>Use Google Sign-In to access leave management, attendance alerts, and student data. Only authorised admin emails may sign in.</p>
+    <h1 data-admin-i18n="auth.title">Admin Console</h1>
+    <p data-admin-i18n="auth.description">Use Google Sign-In to access leave management, attendance alerts, and student data. Only authorised admin emails may sign in.</p>
     <ul class="admin-auth-preview" aria-label="Admin console capabilities">
-      <li><div><strong>Approve requests</strong><span>Review leave stages, signatures, and current workflow status.</span></div></li>
-      <li><div><strong>Record walk-ins</strong><span>Add phone or office leave records from the Operations page.</span></div></li>
-      <li><div><strong>Audit attendance</strong><span>Track tardies, make-up forms, and class-level patterns.</span></div></li>
+      <li><div><strong data-admin-i18n="auth.approveTitle">Approve requests</strong><span data-admin-i18n="auth.approveText">Review leave stages, signatures, and current workflow status.</span></div></li>
+      <li><div><strong data-admin-i18n="auth.walkinTitle">Record walk-ins</strong><span data-admin-i18n="auth.walkinText">Add phone or office leave records from the Operations page.</span></div></li>
+      <li><div><strong data-admin-i18n="auth.auditTitle">Audit attendance</strong><span data-admin-i18n="auth.auditText">Track tardies, make-up forms, and class-level patterns.</span></div></li>
     </ul>
     <button class="admin-auth-google" id="adminGoogleSignInBtn" type="button" onclick="adminSignInWithGoogle()">
       <svg viewBox="0 0 48 48" aria-hidden="true">
@@ -3038,12 +3101,12 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
         <path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.28-3.14.78-4.59l-7.98-6.19A23.9 23.9 0 0 0 0 24c0 3.87.93 7.52 2.56 10.78l7.97-6.19z"></path>
         <path fill="#34A853" d="M24 48c6.47 0 11.9-2.13 15.87-5.78l-7.24-5.62c-2.01 1.35-4.58 2.15-8.63 2.15-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z"></path>
       </svg>
-      Continue with Google
+      <span data-admin-i18n="auth.continueGoogle">Continue with Google</span>
     </button>
-    <div class="admin-auth-loading" id="adminAuthLoading">Checking Firebase and account access...</div>
-    <div class="admin-auth-error" id="adminAuthError"></div>
+    <div class="admin-auth-loading" id="adminAuthLoading" role="status" aria-live="polite" data-admin-i18n="auth.checking">Checking Firebase and account access...</div>
+    <div class="admin-auth-error" id="adminAuthError" role="alert"></div>
     <div class="admin-auth-link" id="adminAuthSignedOutLink">
-      <button type="button" onclick="adminSignOutAndReset()">Try another account</button>
+      <button type="button" onclick="adminSignOutAndReset()" data-admin-i18n="auth.tryAnother">Try another account</button>
     </div>
   </div>
 </div>
@@ -3077,13 +3140,14 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   <div class="sidebar-footer">IBSH &copy; 2026</div>
 </aside>
 <!-- Main -->
-<div class="main">
+<div class="main" id="adminMain">
   <div class="topbar">
     <div class="topbar-title">
-      <span class="topbar-kicker">Admin Console</span>
+      <span class="topbar-kicker" data-admin-i18n="auth.title">Admin Console</span>
       <h1 id="topbarTitle">Dashboard</h1>
     </div>
     <div class="topbar-actions">
+      <button class="admin-language-toggle" type="button" onclick="toggleAdminLanguage()" aria-label="Switch language">中文</button>
       <button class="theme-toggle mobile-theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle light or dark mode" title="Toggle theme">
         <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -3095,7 +3159,7 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
       <div class="admin-user-chip" id="adminUserChip" hidden>
         <span class="role" id="adminUserRole">Admin</span>
         <span id="adminUserEmail">Signed in</span>
-        <button type="button" onclick="adminSignOutAndReset()">Sign out</button>
+        <button type="button" onclick="adminSignOutAndReset()" data-admin-i18n="auth.signOut">Sign out</button>
       </div>
     </div>
   </div>
@@ -3716,16 +3780,22 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
 <!-- ═══ Modal: Grade Adjustment ═══ -->
 <div class="modal-overlay" id="modalGradeAdj">
   <div class="modal" style="max-width:600px">
-    <div class="modal-header"><h3>Year / Grade Adjustment</h3><button class="modal-close" onclick="closeModal('modalGradeAdj')">&times;</button></div>
+    <div class="modal-header"><h3 data-admin-i18n="grade.title">Year / Grade Adjustment</h3><button class="modal-close" onclick="closeModal('modalGradeAdj')">&times;</button></div>
     <div class="modal-body">
-      <p style="margin-bottom:12px;color:var(--text-main);font-size:.85rem">One-click grade advancement for the new school year:</p>
-      <ul style="margin-bottom:16px;color:var(--text-muted);font-size:.85rem;padding-left:20px">
-        <li>G12 students will be <strong>deleted</strong> (graduated)</li>
-        <li>All remaining students advance by 1 grade (G7→G8, G8→G9, etc.)</li>
-      </ul>
-      <button class="btn btn-warning" onclick="advanceGrades()">Advance All Grades +1</button>
+      <p style="margin-bottom:12px;color:var(--text-main);font-size:.85rem" data-admin-i18n="grade.description">Review the roster impact before starting the new school year.</p>
+      <div class="grade-preview-grid" aria-live="polite">
+        <div class="grade-preview-stat"><span data-admin-i18n="grade.advance">Advance</span><strong id="gradePreviewAdvance">0</strong></div>
+        <div class="grade-preview-stat"><span data-admin-i18n="grade.graduate">Graduate</span><strong id="gradePreviewGraduate">0</strong></div>
+        <div class="grade-preview-stat"><span data-admin-i18n="grade.unchanged">Unchanged</span><strong id="gradePreviewUnchanged">0</strong></div>
+      </div>
+      <div class="grade-preview-list" id="gradePreviewList">Loading roster preview...</div>
+      <label class="grade-confirm-row" for="gradeConfirmReview">
+        <input type="checkbox" id="gradeConfirmReview" onchange="updateGradeAdvanceButton()">
+        <span data-admin-i18n="grade.confirm">I reviewed these counts and understand that graduated Grade 12 students will be removed.</span>
+      </label>
+      <button class="btn btn-warning" id="gradeAdvanceButton" style="margin-top:16px;width:100%" onclick="advanceGrades()" disabled data-admin-i18n="grade.apply">Apply grade advancement</button>
     </div>
-    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalGradeAdj')">Close</button></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalGradeAdj')" data-admin-i18n="common.close">Close</button></div>
   </div>
 </div>
 <!-- ═══ Modal: Add Holiday ═══ -->
@@ -3811,13 +3881,113 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   </div>
 </div>
 <!-- Toast container -->
-<div class="toast-container" id="toastContainer"></div>
+<div class="toast-container" id="toastContainer" role="status" aria-live="polite" aria-atomic="false"></div>
 <script>
 /* ═══════════════════════════════════════════════════════════════════
    IBSH Admin – Main Script
    ═══════════════════════════════════════════════════════════════════ */
+const ADMIN_LANGUAGE_STORAGE_KEY = 'ibsh_admin_language';
+let ADMIN_LANGUAGE = 'en';
+const ADMIN_I18N = {
+  en: {
+    brand: 'IBSH Leave Portal',
+    'auth.title': 'Admin Console',
+    'auth.description': 'Use Google Sign-In to access leave management, attendance alerts, and student data. Only authorised admin emails may sign in.',
+    'auth.approveTitle': 'Approve requests',
+    'auth.approveText': 'Review leave stages, signatures, and current workflow status.',
+    'auth.walkinTitle': 'Record walk-ins',
+    'auth.walkinText': 'Add phone or office leave records from the Operations page.',
+    'auth.auditTitle': 'Audit attendance',
+    'auth.auditText': 'Track tardies, make-up forms, and class-level patterns.',
+    'auth.continueGoogle': 'Continue with Google',
+    'auth.checking': 'Checking Firebase and account access...',
+    'auth.tryAnother': 'Try another account',
+    'auth.signOut': 'Sign out',
+    'nav.dashboard': 'Dashboard',
+    'nav.operations': 'Attendance Operations',
+    'nav.leaves': 'Leave Management',
+    'nav.logs': 'Activity Log',
+    'nav.stats': 'Statistics',
+    'nav.settings': 'Settings',
+    'grade.title': 'Year / Grade Adjustment',
+    'grade.description': 'Review the roster impact before starting the new school year.',
+    'grade.advance': 'Advance',
+    'grade.graduate': 'Graduate',
+    'grade.unchanged': 'Unchanged',
+    'grade.confirm': 'I reviewed these counts and understand that graduated Grade 12 students will be removed.',
+    'grade.apply': 'Apply grade advancement',
+    'common.close': 'Close',
+  },
+  zh: {
+    brand: 'IBSH 學生請假系統',
+    'auth.title': '管理後台',
+    'auth.description': '使用 Google 登入以管理假單、出缺勤提醒與學生資料。僅限已授權的教職員帳號。',
+    'auth.approveTitle': '審核假單',
+    'auth.approveText': '查看簽核關卡、簽名與目前流程狀態。',
+    'auth.walkinTitle': '登錄臨時請假',
+    'auth.walkinText': '從出勤作業頁新增電話或辦公室臨時請假紀錄。',
+    'auth.auditTitle': '檢查出缺勤',
+    'auth.auditText': '追蹤遲到、待補假單與班級出勤趨勢。',
+    'auth.continueGoogle': '使用 Google 繼續',
+    'auth.checking': '正在檢查 Firebase 與帳號權限...',
+    'auth.tryAnother': '改用其他帳號',
+    'auth.signOut': '登出',
+    'nav.dashboard': '總覽',
+    'nav.operations': '出勤作業',
+    'nav.leaves': '假單管理',
+    'nav.logs': '活動紀錄',
+    'nav.stats': '統計',
+    'nav.settings': '設定',
+    'grade.title': '學年度／年級調整',
+    'grade.description': '開始新學年度前，請先確認學生名冊的變更內容。',
+    'grade.advance': '升級',
+    'grade.graduate': '畢業移除',
+    'grade.unchanged': '不變更',
+    'grade.confirm': '我已確認人數，並了解十二年級畢業生將從學生名冊移除。',
+    'grade.apply': '套用年級升級',
+    'common.close': '關閉',
+  },
+};
+function adminText(key) {
+  const table = ADMIN_I18N[ADMIN_LANGUAGE] || ADMIN_I18N.en;
+  return table[key] || ADMIN_I18N.en[key] || key;
+}
+function applyAdminLanguage(language) {
+  ADMIN_LANGUAGE = language === 'zh' ? 'zh' : 'en';
+  document.documentElement.lang = ADMIN_LANGUAGE === 'zh' ? 'zh-Hant' : 'en';
+  document.querySelectorAll('[data-admin-i18n]').forEach(element => {
+    element.textContent = adminText(element.dataset.adminI18n);
+  });
+  document.querySelectorAll('.admin-language-toggle').forEach(button => {
+    button.textContent = ADMIN_LANGUAGE === 'en' ? '中文' : 'EN';
+    button.setAttribute('aria-label', ADMIN_LANGUAGE === 'en' ? '切換為中文' : 'Switch to English');
+    button.setAttribute('title', button.getAttribute('aria-label'));
+  });
+  document.querySelectorAll('.sidebar-nav button[data-section]').forEach(button => {
+    const label = adminText('nav.' + button.dataset.section);
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
+  });
+  document.querySelectorAll('.tcm-tabbtn[data-tcm-tab]').forEach(button => {
+    const label = adminText('nav.' + button.dataset.tcmTab);
+    const labelElement = button.querySelector('.lbl');
+    if (labelElement) labelElement.textContent = label;
+    button.setAttribute('aria-label', label);
+  });
+  const activeSection = document.querySelector('.section.active');
+  const currentName = activeSection && activeSection.id ? activeSection.id.replace(/^sec-/, '') : 'dashboard';
+  const title = document.getElementById('topbarTitle');
+  if (title) title.textContent = adminText('nav.' + currentName);
+  document.title = ADMIN_LANGUAGE === 'zh' ? 'IBSH 出勤管理後台' : 'IBSH Attendance - Admin';
+}
 function initAdminLanguage() {
-  document.documentElement.lang = 'en';
+  const saved = localStorage.getItem(ADMIN_LANGUAGE_STORAGE_KEY);
+  applyAdminLanguage(saved === 'zh' ? 'zh' : 'en');
+}
+function toggleAdminLanguage() {
+  const next = ADMIN_LANGUAGE === 'en' ? 'zh' : 'en';
+  localStorage.setItem(ADMIN_LANGUAGE_STORAGE_KEY, next);
+  applyAdminLanguage(next);
 }
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -3833,6 +4003,9 @@ let CMDK_ITEMS = [];
 let CMDK_ACTIVE_INDEX = 0;
 let PS_CROSSREF_LAST = null;
 let PS_CROSSREF_INITIALIZED = false;
+let GRADE_ADVANCE_IN_PROGRESS = false;
+let GRADE_ADVANCE_PLAN = null;
+const MODAL_RETURN_FOCUS = new Map();
 const PS_CROSSREF_STORAGE_KEY = 'ibsh_ps_tardy_cross_check_history_v1';
 // ── Helpers ──────────────────────────────────────────────────────
 function today() {
@@ -3841,12 +4014,102 @@ function today() {
 function toast(msg, type = 'success') {
   const el = document.createElement('div');
   el.className = 'toast toast-' + type;
+  if (type === 'error') el.setAttribute('role', 'alert');
   el.textContent = msg;
   $('#toastContainer').appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }
-function openModal(id) { document.getElementById(id).classList.add('show'); }
-function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function modalFocusableElements(modal) {
+  return [...modal.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+    .filter(element => element.offsetParent !== null);
+}
+function openModal(id) {
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  MODAL_RETURN_FOCUS.set(id, document.activeElement);
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => {
+    const modal = overlay.querySelector('.modal') || overlay;
+    const focusable = modalFocusableElements(modal);
+    (focusable[0] || modal).focus();
+  });
+}
+function closeModal(id) {
+  const overlay = document.getElementById(id);
+  if (!overlay) return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden', 'true');
+  const returnFocus = MODAL_RETURN_FOCUS.get(id);
+  MODAL_RETURN_FOCUS.delete(id);
+  if (returnFocus && typeof returnFocus.focus === 'function') returnFocus.focus();
+}
+function initAccessibleModals() {
+  document.querySelectorAll('.modal-overlay').forEach((overlay, index) => {
+    const modal = overlay.querySelector('.modal');
+    const heading = overlay.querySelector('.modal-header h3');
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-hidden', overlay.classList.contains('show') ? 'false' : 'true');
+    if (heading) {
+      if (!heading.id) heading.id = `${overlay.id || 'adminModal'}Title${index}`;
+      overlay.setAttribute('aria-labelledby', heading.id);
+    }
+    if (modal) modal.tabIndex = -1;
+    const closeButton = overlay.querySelector('.modal-close');
+    if (closeButton && !closeButton.getAttribute('aria-label')) closeButton.setAttribute('aria-label', 'Close dialog');
+  });
+  document.addEventListener('keydown', event => {
+    const openOverlays = [...document.querySelectorAll('.modal-overlay.show')];
+    const active = openOverlays[openOverlays.length - 1];
+    if (!active) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeModal(active.id);
+      return;
+    }
+    if (event.key !== 'Tab') return;
+    const modal = active.querySelector('.modal') || active;
+    const focusable = modalFocusableElements(modal);
+    if (!focusable.length) {
+      event.preventDefault();
+      modal.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+}
+function setAdminAuthIsolation(locked) {
+  document.body.classList.toggle('admin-auth-locked', Boolean(locked));
+  const gate = document.getElementById('adminAuthGate');
+  if (gate) {
+    gate.style.display = locked ? 'flex' : 'none';
+    gate.setAttribute('aria-hidden', locked ? 'false' : 'true');
+  }
+  ['.hamburger', '#sidebarOverlay', '#sidebar', '#adminMain', '#tcmApp', '#tcmTabbar', '#tcmSignOverlay'].forEach(selector => {
+    const element = document.querySelector(selector);
+    if (!element) return;
+    element.inert = Boolean(locked);
+    if (locked) element.setAttribute('aria-hidden', 'true');
+    else if (element.id === 'tcmApp') element.setAttribute('aria-hidden', window.innerWidth <= 720 ? 'false' : 'true');
+    else if (element.id === 'tcmSignOverlay') element.setAttribute('aria-hidden', 'true');
+    else element.removeAttribute('aria-hidden');
+  });
+  if (locked) {
+    requestAnimationFrame(() => {
+      const signIn = document.getElementById('adminGoogleSignInBtn');
+      if (signIn && document.activeElement === document.body) signIn.focus();
+    });
+  }
+}
 function toggleSidebar() {
   $('#sidebar').classList.toggle('open');
   $('#sidebarOverlay').classList.toggle('open');
@@ -4005,6 +4268,9 @@ function canActOnLeaveStage(leave) {
 function canManageWalkin() {
   return isAdminRole();
 }
+function canViewStats() {
+  return isAdminRole() || currentAdminRoles().includes('discipline') || currentAdminRoles().includes('dean');
+}
 function canViewSettings() {
   return isSuperAdminUser();
 }
@@ -4040,23 +4306,23 @@ function pendingLeavesByAppliedTime() {
 }
 // ── Navigation ───────────────────────────────────────────────────
 const navTitles = {
-  dashboard: 'Dashboard',
-  operations: 'Attendance Operations',
-  leaves: 'Leave Management',
-  logs: 'Activity Log',
-  stats: 'Statistics',
-  settings: 'Settings',
+  dashboard: 'nav.dashboard',
+  operations: 'nav.operations',
+  leaves: 'nav.leaves',
+  logs: 'nav.logs',
+  stats: 'nav.stats',
+  settings: 'nav.settings',
 };
 function switchSection(name) {
   // Permission gate
   if (name === 'operations' && !canManageWalkin()) { toast('Attendance Operations is restricted.', 'error'); return; }
   if (name === 'settings' && !canViewSettings()) { toast('Settings is restricted.', 'error'); return; }
-  if (name === 'stats' && !(isAdminRole() || currentAdminRoles().includes('discipline') || currentAdminRoles().includes('dean'))) { toast('Statistics is restricted.', 'error'); return; }
+  if (name === 'stats' && !canViewStats()) { toast('Statistics is restricted.', 'error'); return; }
   $$('.section').forEach(s => s.classList.remove('active'));
   $(`#sec-${name}`).classList.add('active');
   $$('.sidebar-nav button').forEach(b => b.classList.remove('active'));
   $$(`.sidebar-nav button[data-section="${name}"]`).forEach(b => b.classList.add('active'));
-  $('#topbarTitle').textContent = navTitles[name] || name;
+  $('#topbarTitle').textContent = adminText(navTitles[name] || ('nav.' + name));
   // Refresh section data
   refreshSection(name);
   // Close mobile sidebar
@@ -4181,6 +4447,21 @@ function refreshDashboard() {
     makeUpLeaves: mobileDashboardMakeUpLeaves(classFilter),
   });
   refreshOpsDock();
+  animateDashboardMetricChanges();
+}
+function animateDashboardMetricChanges() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  ['dashTotalStudents', 'dashPendingLeaves', 'dashTodayTardies', 'dashTodayLeaves'].forEach(id => {
+    const element = document.getElementById(id);
+    if (!element) return;
+    const nextValue = element.textContent;
+    const previousValue = element.dataset.motionValue;
+    element.dataset.motionValue = nextValue;
+    if (previousValue === undefined || previousValue === nextValue) return;
+    element.classList.remove('metric-updated');
+    void element.offsetWidth;
+    element.classList.add('metric-updated');
+  });
 }
 function mobileDashboardInitials(value) {
   const text = String(value || '').trim();
@@ -4736,12 +5017,31 @@ function runCommandPaletteItem(index) {
   closeCommandPalette();
   item.run();
 }
+function updateMobileTabLayout() {
+  const tabbar = document.getElementById('tcmTabbar');
+  if (!tabbar) return;
+  const wraps = [...tabbar.querySelectorAll('.tcm-tabbtn-wrap')];
+  const visibleWraps = wraps.filter(wrap => wrap.style.display !== 'none' && !wrap.hidden);
+  tabbar.style.setProperty('--tcm-tab-count', String(Math.max(1, visibleWraps.length)));
+  const visibleButtons = visibleWraps.map(wrap => wrap.querySelector('.tcm-tabbtn')).filter(Boolean);
+  const activeVisible = visibleButtons.some(button => button.classList.contains('active'));
+  if (!activeVisible && visibleButtons.length) {
+    const fallback = visibleButtons.find(button => button.dataset.tcmTab === 'dashboard') || visibleButtons[0];
+    if (window.TCM && typeof window.TCM.setTab === 'function') window.TCM.setTab(fallback.dataset.tcmTab);
+    else {
+      tabbar.querySelectorAll('.tcm-tabbtn').forEach(button => button.classList.remove('active'));
+      fallback.classList.add('active');
+    }
+  }
+}
 // Apply role-based visibility on sidebar nav and settings tabs.
 // Called once after sign-in (in initialiseAdminApp), and again whenever role changes.
 function applyRoleVisibility() {
-  // Sidebar nav: Settings is visible to admin, discipline, and dean roles.
+  // Settings and data management are reserved for super admins.
   const settingsNav = document.querySelector('.sidebar-nav button[data-section="settings"]');
   if (settingsNav) settingsNav.style.display = canViewSettings() ? '' : 'none';
+  const focusCard = document.querySelector('.bento-focus-card');
+  if (focusCard) focusCard.style.display = isAdminRole() ? 'none' : '';
   const operationsNav = document.querySelector('.sidebar-nav button[data-section="operations"]');
   if (operationsNav) operationsNav.style.display = canManageWalkin() ? '' : 'none';
   if (!canManageWalkin() && document.getElementById('sec-operations')?.classList.contains('active')) {
@@ -4753,7 +5053,11 @@ function applyRoleVisibility() {
   });
   // Stats nav also restricted to non-homeroom (homeroom has their class stats card on dashboard)
   const statsNav = document.querySelector('.sidebar-nav button[data-section="stats"]');
-  if (statsNav) statsNav.style.display = isAdminRole() || currentAdminRoles().includes('discipline') || currentAdminRoles().includes('dean') ? '' : 'none';
+  if (statsNav) statsNav.style.display = canViewStats() ? '' : 'none';
+  document.querySelectorAll('[data-tcm-tab="stats"]').forEach(btn => {
+    const wrap = btn.closest('.tcm-tabbtn-wrap') || btn;
+    wrap.style.display = canViewStats() ? '' : 'none';
+  });
   // Settings tabs: hide tabs the current role shouldn't see
   const showSettingsDataTabs = canViewSettings();
   const showStudentsTab = showSettingsDataTabs;
@@ -4779,6 +5083,7 @@ function applyRoleVisibility() {
   const canEditCoreSettings = canEditSettings();
   document.querySelectorAll('.settings-pane[data-stab="students"] .card-header .btn-group, .settings-pane[data-stab="users"] .card-header .btn-group, .settings-pane[data-stab="holidays"] .card-header .btn-group, .settings-pane[data-stab="examPeriods"] .card-header .btn-group')
     .forEach(group => { group.style.display = canEditCoreSettings ? '' : 'none'; });
+  updateMobileTabLayout();
   renderMobileSettingsOverview();
 }
 function renderHomeroomStats() {
@@ -6016,36 +6321,118 @@ async function confirmImport() {
   }
 }
 // ── Grade Adjustment ─────────────────────────────────────────────
+function buildGradeAdvancePlan() {
+  const students = AppDB.students();
+  const updates = [];
+  const removals = [];
+  const unchanged = [];
+  students.forEach(student => {
+    const className = String(student.className || '').trim();
+    const match = className.match(/^(G)?(1[0-2]|[1-9])([^0-9].*)?$/i);
+    if (!match) {
+      unchanged.push(student);
+      return;
+    }
+    const grade = Number(match[2]);
+    if (grade === 12) {
+      removals.push({ id: student.id, fromClassName: className });
+      return;
+    }
+    const prefix = match[1] ? 'G' : '';
+    const suffix = match[3] || '';
+    updates.push({
+      id: student.id,
+      studentNo: student.studentNo,
+      fromClassName: className,
+      className: prefix + String(grade + 1) + suffix,
+    });
+  });
+  const settings = AppDB.getSettings ? AppDB.getSettings() : {};
+  return {
+    updates,
+    removals,
+    unchanged,
+    expectedGradeYearOffset: Number(settings.gradeYearOffset || 0) || 0,
+    operationId: (window.crypto && typeof window.crypto.randomUUID === 'function')
+      ? window.crypto.randomUUID()
+      : `grade-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+  };
+}
+function gradePlanSummaryLines(plan) {
+  const grouped = new Map();
+  plan.updates.forEach(change => {
+    const key = `${change.fromClassName} → ${change.className}`;
+    grouped.set(key, (grouped.get(key) || 0) + 1);
+  });
+  const lines = [...grouped.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+    .map(([label, count]) => `<div><strong>${escapeHtml(label)}</strong> · ${count} student${count === 1 ? '' : 's'}</div>`);
+  if (plan.removals.length) {
+    const classes = [...new Set(plan.removals.map(item => item.fromClassName))].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    lines.push(`<div><strong>Graduating:</strong> ${escapeHtml(classes.join(', '))} · ${plan.removals.length} student${plan.removals.length === 1 ? '' : 's'}</div>`);
+  }
+  if (plan.unchanged.length) {
+    const classes = [...new Set(plan.unchanged.map(item => String(item.className || 'Blank')))].slice(0, 8);
+    lines.push(`<div><strong>Unchanged:</strong> ${escapeHtml(classes.join(', '))}${plan.unchanged.length > 8 ? ', …' : ''}</div>`);
+  }
+  return lines.length ? lines : ['<div>No eligible grade records were found.</div>'];
+}
+function renderGradeAdvancePreview() {
+  GRADE_ADVANCE_PLAN = buildGradeAdvancePlan();
+  $('#gradePreviewAdvance').textContent = String(GRADE_ADVANCE_PLAN.updates.length);
+  $('#gradePreviewGraduate').textContent = String(GRADE_ADVANCE_PLAN.removals.length);
+  $('#gradePreviewUnchanged').textContent = String(GRADE_ADVANCE_PLAN.unchanged.length);
+  $('#gradePreviewList').innerHTML = gradePlanSummaryLines(GRADE_ADVANCE_PLAN).join('');
+  const confirmation = $('#gradeConfirmReview');
+  if (confirmation) confirmation.checked = false;
+  updateGradeAdvanceButton();
+}
+function updateGradeAdvanceButton() {
+  const button = $('#gradeAdvanceButton');
+  const confirmation = $('#gradeConfirmReview');
+  if (!button) return;
+  const hasChanges = Boolean(GRADE_ADVANCE_PLAN && (GRADE_ADVANCE_PLAN.updates.length || GRADE_ADVANCE_PLAN.removals.length));
+  button.disabled = GRADE_ADVANCE_IN_PROGRESS || !hasChanges || !(confirmation && confirmation.checked);
+}
 function showGradeAdjustModal() {
   if (!canEditStudents()) { toast('Student editing is restricted to admins.', 'error'); return; }
+  renderGradeAdvancePreview();
   openModal('modalGradeAdj');
 }
 async function advanceGrades() {
   if (!canEditStudents()) { toast('Student editing is restricted to admins.', 'error'); return; }
-  if (!confirm('This will delete all G12 students and advance all remaining grades by 1. Continue?')) return;
-  const students = AppDB.students();
+  if (GRADE_ADVANCE_IN_PROGRESS) return;
+  if (!GRADE_ADVANCE_PLAN || !$('#gradeConfirmReview')?.checked) {
+    toast('Review the preview and confirm before applying grade changes.', 'error');
+    return;
+  }
+  const button = $('#gradeAdvanceButton');
+  GRADE_ADVANCE_IN_PROGRESS = true;
+  if (button) button.textContent = ADMIN_LANGUAGE === 'zh' ? '正在更新名冊...' : 'Updating roster...';
+  updateGradeAdvanceButton();
   try {
-    // Remove G12 students (graduated)
-    const toRemove = students.filter(s => s.className.match(/^G12/i));
-    await Promise.all(toRemove.map(s => AppDB.removeStudent(s.id)));
-    if (toRemove.length) toast(`Removed ${toRemove.length} graduated G12 students.`, 'info');
-    // Advance remaining students by 1 grade
-    const remaining = AppDB.students();
-    const updates = [];
-    remaining.forEach(s => {
-      const match = s.className.match(/^(G)(\d+)(.*)$/i);
-      if (match) {
-        const newClass = match[1] + (parseInt(match[2], 10) + 1) + match[3];
-        updates.push(AppDB.updateStudent(s.id, { className: newClass }));
-      }
+    if (typeof AppDB.advanceStudentGrades !== 'function') {
+      throw new Error('The grade advancement service is unavailable. Refresh after deployment.');
+    }
+    const result = await AppDB.advanceStudentGrades({
+      ...GRADE_ADVANCE_PLAN,
+      actorEmail: ADMIN_AUTH_USER && ADMIN_AUTH_USER.email,
     });
-    await Promise.all(updates);
-    toast(`Advanced ${updates.length} students by 1 grade level.`);
+    toast(`Grade advancement complete: ${result.advanced} advanced, ${result.graduated} graduated.`);
+    if (!result.mirrorSynced) {
+      toast('The main roster was updated, but the public tardy directory needs to be synced again.', 'error');
+    }
     closeModal('modalGradeAdj');
     refreshStudents();
+    refreshDashboard();
   } catch (err) {
     console.error('[Admin] Failed to advance grades:', err);
     toast(err.message || 'Failed to advance grades.', 'error');
+    renderGradeAdvancePreview();
+  } finally {
+    GRADE_ADVANCE_IN_PROGRESS = false;
+    if (button) button.textContent = adminText('grade.apply');
+    updateGradeAdvanceButton();
   }
 }
 // ═══════════════════════════════════════════════════════════════════
@@ -9094,8 +9481,7 @@ async function handleAdminAuthedUser(user) {
       }
     }
     updateAdminUserChip(isSuperAdmin);
-    const authGate = $('#adminAuthGate');
-    if (authGate) authGate.style.display = 'none';
+    setAdminAuthIsolation(false);
     try {
       await initialiseAdminApp();
     } catch (initErr) {
@@ -9177,8 +9563,7 @@ async function bootAdminAuth() {
         ADMIN_AUTH_STAFF = null;
         const chip = $('#adminUserChip');
         if (chip) chip.hidden = true;
-        const gate = $('#adminAuthGate');
-        if (gate) gate.style.display = 'flex';
+        setAdminAuthIsolation(true);
         setAdminAuthLoading(false);
       }, 800);
     }
@@ -9248,6 +9633,8 @@ function initBentoInteractions() {
 }
 document.addEventListener('DOMContentLoaded', () => {
   initAdminLanguage();
+  initAccessibleModals();
+  setAdminAuthIsolation(true);
   bootAdminAuth();
   initBentoInteractions();
 });
@@ -9723,7 +10110,10 @@ window.addEventListener('DOMContentLoaded', () => {
   function setTab(name) {
     TCM.activeTab = name;
     document.querySelectorAll('.tcm-tabbtn').forEach(btn => {
-      btn.classList.toggle('active', btn.getAttribute('data-tcm-tab') === name);
+      const active = btn.getAttribute('data-tcm-tab') === name;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.tabIndex = active ? 0 : -1;
     });
     // Tabs map 1:1 to desktop sidebar sections — defer to existing switcher
     if (typeof window.switchSection === 'function') {
@@ -9732,6 +10122,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Refresh pending-count badge on Leaves tab
     updateInboxBadge();
   }
+  TCM.setTab = setTab;
   function openDetail(leaveId) {
     TCM.detailLeaveId = leaveId;
     closeSignSheet();
@@ -9868,6 +10259,21 @@ window.addEventListener('DOMContentLoaded', () => {
     // Tab buttons
     document.querySelectorAll('.tcm-tabbtn').forEach(btn => {
       btn.addEventListener('click', () => setTab(btn.getAttribute('data-tcm-tab')));
+      btn.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        const visible = [...document.querySelectorAll('.tcm-tabbtn')]
+          .filter(item => item.closest('.tcm-tabbtn-wrap')?.style.display !== 'none');
+        if (!visible.length) return;
+        event.preventDefault();
+        const current = Math.max(0, visible.indexOf(btn));
+        const next = event.key === 'Home'
+          ? visible[0]
+          : event.key === 'End'
+            ? visible[visible.length - 1]
+            : visible[(current + (event.key === 'ArrowRight' ? 1 : -1) + visible.length) % visible.length];
+        next.focus();
+        setTab(next.getAttribute('data-tcm-tab'));
+      });
     });
     // Back buttons
     document.querySelectorAll('[data-tcm-back]').forEach(b => {
@@ -9966,32 +10372,32 @@ window.addEventListener('DOMContentLoaded', () => {
 <!-- Bottom tab bar — 5 desktop SVG icons with frosted glass -->
 <nav class="tcm-tabbar" id="tcmTabbar" role="tablist">
   <div class="tcm-tabbtn-wrap">
-    <button class="tcm-tabbtn active" type="button" data-tcm-tab="dashboard">
+    <button class="tcm-tabbtn active" type="button" role="tab" aria-selected="true" aria-controls="sec-dashboard" data-tcm-tab="dashboard">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="8" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></svg>
       <span class="lbl">Dashboard</span>
     </button>
   </div>
   <div class="tcm-tabbtn-wrap">
-    <button class="tcm-tabbtn" type="button" data-tcm-tab="leaves">
+    <button class="tcm-tabbtn" type="button" role="tab" aria-selected="false" aria-controls="sec-leaves" tabindex="-1" data-tcm-tab="leaves">
       <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
       <span class="lbl">Leaves</span>
       <span class="badge" id="tcmInboxBadge" hidden>0</span>
     </button>
   </div>
   <div class="tcm-tabbtn-wrap">
-    <button class="tcm-tabbtn" type="button" data-tcm-tab="logs">
+    <button class="tcm-tabbtn" type="button" role="tab" aria-selected="false" aria-controls="sec-logs" tabindex="-1" data-tcm-tab="logs">
       <svg viewBox="0 0 24 24"><path d="M3 5h18"/><path d="M3 12h18"/><path d="M3 19h18"/><circle cx="7" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>
       <span class="lbl">Logs</span>
     </button>
   </div>
   <div class="tcm-tabbtn-wrap">
-    <button class="tcm-tabbtn" type="button" data-tcm-tab="stats">
+    <button class="tcm-tabbtn" type="button" role="tab" aria-selected="false" aria-controls="sec-stats" tabindex="-1" data-tcm-tab="stats">
       <svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h17"/><rect x="7" y="10" width="3" height="6" rx="1"/><rect x="12" y="6" width="3" height="10" rx="1"/><rect x="17" y="13" width="3" height="3" rx="1"/></svg>
       <span class="lbl">Stats</span>
     </button>
   </div>
   <div class="tcm-tabbtn-wrap">
-    <button class="tcm-tabbtn" type="button" data-tcm-tab="settings">
+    <button class="tcm-tabbtn" type="button" role="tab" aria-selected="false" aria-controls="sec-settings" tabindex="-1" data-tcm-tab="settings">
       <svg viewBox="0 0 24 24"><path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.05.05a2.1 2.1 0 0 1-2.97 2.97l-.05-.05A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6l-.03.04a2.1 2.1 0 0 1-3.94 0L10 20a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.87.34l-.05.05a2.1 2.1 0 0 1-2.97-2.97l.05-.05A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1l-.04-.03a2.1 2.1 0 0 1 0-3.94L4 10a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.87l-.05-.05a2.1 2.1 0 0 1 2.97-2.97l.05.05A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6l.03-.04a2.1 2.1 0 0 1 3.94 0L14 4a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.87-.34l.05-.05a2.1 2.1 0 0 1 2.97 2.97l-.05.05A1.7 1.7 0 0 0 19.4 9c.14.37.36.7.6 1l.04.03a2.1 2.1 0 0 1 0 3.94L20 14c-.24.3-.46.63-.6 1z"/></svg>
       <span class="lbl">Settings</span>
     </button>

@@ -1109,6 +1109,106 @@
     });
     return true;
   }
+  async function advanceStudentGrades(plan) {
+    if (!_db) throw new Error('Firestore is not connected.');
+    const input = plan || {};
+    const updates = Array.isArray(input.updates) ? input.updates : [];
+    const removals = Array.isArray(input.removals) ? input.removals : [];
+    const expectedOffset = Number(input.expectedGradeYearOffset || 0) || 0;
+    const actorEmail = String(input.actorEmail || '').trim().toLowerCase();
+    const operationId = String(input.operationId || _generateId()).trim();
+    const totalOperations = updates.length + removals.length + 1;
+    if (totalOperations > BATCH_LIMIT) {
+      throw new Error(`Grade advancement is limited to ${BATCH_LIMIT - 1} student records per operation. Export and split the roster before continuing.`);
+    }
+
+    const updateIds = new Set();
+    const removalIds = new Set();
+    const currentById = new Map(_students.map(student => [student.id, student]));
+    const normalizedUpdates = updates.map(change => {
+      const id = String((change && change.id) || '').trim();
+      const current = currentById.get(id);
+      const nextClass = String((change && change.className) || '').trim();
+      const expectedClass = String((change && change.fromClassName) || '').trim();
+      if (!id || !current || !nextClass) throw new Error('The grade preview contains an invalid student update. Refresh and try again.');
+      if (updateIds.has(id)) throw new Error('The grade preview contains a duplicate student update.');
+      if (expectedClass && String(current.className || '').trim() !== expectedClass) {
+        throw new Error(`Student ${current.studentNo || id} changed after the preview. Refresh before applying grades.`);
+      }
+      updateIds.add(id);
+      return _normalizeStudentRecord({ ...current, className: nextClass, id });
+    });
+    removals.forEach(item => {
+      const id = String((item && item.id) || item || '').trim();
+      const current = currentById.get(id);
+      const expectedClass = String((item && item.fromClassName) || '').trim();
+      if (!id || !current) throw new Error('The grade preview contains an invalid graduated student. Refresh and try again.');
+      if (removalIds.has(id) || updateIds.has(id)) throw new Error('The grade preview contains a duplicate student record.');
+      if (expectedClass && String(current.className || '').trim() !== expectedClass) {
+        throw new Error(`Student ${current.studentNo || id} changed after the preview. Refresh before applying grades.`);
+      }
+      removalIds.add(id);
+    });
+    if (!normalizedUpdates.length && !removalIds.size) {
+      return { advanced: 0, graduated: 0, mirrorSynced: true, operationId };
+    }
+
+    const settingsRef = _db.collection(COLLECTIONS.settings).doc(SETTINGS_DOC_ID);
+    const completedAt = new Date().toISOString();
+    await _queueWrite(() => _db.runTransaction(async transaction => {
+      const settingsSnapshot = await transaction.get(settingsRef);
+      const remoteSettings = settingsSnapshot.exists ? settingsSnapshot.data() : {};
+      const remoteOffset = Number(remoteSettings.gradeYearOffset || 0) || 0;
+      if (remoteOffset !== expectedOffset) {
+        throw new Error('The grade roster version changed after this preview. Close the dialog, refresh, and review the new counts.');
+      }
+      normalizedUpdates.forEach(student => {
+        transaction.update(_db.collection(COLLECTIONS.students).doc(student.id), {
+          className: student.className,
+        });
+      });
+      removalIds.forEach(id => transaction.delete(_db.collection(COLLECTIONS.students).doc(id)));
+      transaction.set(settingsRef, {
+        gradeYearOffset: remoteOffset + 1,
+        lastGradeAdvanceAt: completedAt,
+        lastGradeAdvanceBy: actorEmail,
+        lastGradeAdvanceOperationId: operationId,
+        lastGradeAdvanceAdvancedCount: normalizedUpdates.length,
+        lastGradeAdvanceGraduatedCount: removalIds.size,
+      }, { merge: true });
+    }));
+
+    const updatedById = new Map(normalizedUpdates.map(student => [student.id, student]));
+    _students = _students
+      .filter(student => !removalIds.has(student.id))
+      .map(student => updatedById.get(student.id) || student);
+    _settings = {
+      ..._settings,
+      gradeYearOffset: expectedOffset + 1,
+      lastGradeAdvanceAt: completedAt,
+      lastGradeAdvanceBy: actorEmail,
+      lastGradeAdvanceOperationId: operationId,
+      lastGradeAdvanceAdvancedCount: normalizedUpdates.length,
+      lastGradeAdvanceGraduatedCount: removalIds.size,
+    };
+
+    let mirrorSynced = true;
+    try {
+      await _queueWrite(async () => {
+        await _writePublicStudentsBatch(normalizedUpdates);
+        await _commitChunkedDelete(COLLECTIONS.publicStudents, [...removalIds]);
+      });
+    } catch (error) {
+      mirrorSynced = false;
+      console.error('[AppDB] Grade advancement succeeded, but public student mirror sync failed:', error);
+    }
+    return {
+      advanced: normalizedUpdates.length,
+      graduated: removalIds.size,
+      mirrorSynced,
+      operationId,
+    };
+  }
   async function importStudents(rows) {
     let added = 0;
     let updated = 0;
@@ -1675,6 +1775,7 @@
     addStudent,
     updateStudent,
     removeStudent,
+    advanceStudentGrades,
     importStudents,
     syncAllPublicStudents,
     getStudentsByClass,

@@ -10,6 +10,10 @@
     --portal-orange: #ea580c;
     --portal-orange-soft: #ffedd5;
     --portal-shadow: 0 24px 60px rgba(15, 23, 42, 0.14);
+    --portal-motion-fast: 140ms;
+    --portal-motion-base: 240ms;
+    --portal-motion-slow: 420ms;
+    --portal-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Shared sign-in language */
@@ -445,6 +449,7 @@
     background: rgba(15, 23, 42, 0.48);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    animation: portalBackdropIn var(--portal-motion-fast) ease-out both;
 }
 .portal-sheet-backdrop[hidden] { display: none !important; }
 .portal-sheet {
@@ -458,7 +463,12 @@
     box-shadow: var(--portal-shadow);
     backdrop-filter: blur(24px) saturate(155%);
     -webkit-backdrop-filter: blur(24px) saturate(155%);
+    animation: portalSheetIn var(--portal-motion-base) var(--portal-ease-out) both;
 }
+@keyframes portalBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes portalSheetIn { from { opacity: 0; transform: translateY(14px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes portalCurrentStep { 0%, 100% { box-shadow: 0 0 0 0 rgba(234, 88, 12, 0); } 50% { box-shadow: 0 0 0 5px rgba(234, 88, 12, .14); } }
+@keyframes portalTabIn { from { opacity: .55; transform: translateY(3px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
 .portal-sheet-handle { display: none; }
 .portal-sheet-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .portal-sheet-head h2 { margin: 5px 0 0; color: var(--portal-ink); font-size: 21px; line-height: 1.15; font-weight: 950; }
@@ -847,7 +857,7 @@ body.portal-modal-open { overflow: hidden; }
     font-family: inherit;
     text-align: left;
     cursor: pointer;
-    transition: background-color 160ms ease, box-shadow 160ms ease;
+    transition: background-color var(--portal-motion-fast) ease, box-shadow var(--portal-motion-base) ease, transform var(--portal-motion-fast) var(--portal-ease-out);
 }
 
 .portal-home-current-button:hover,
@@ -884,7 +894,7 @@ body.portal-modal-open { overflow: hidden; }
 }
 
 .portal-workflow-step.is-done .portal-workflow-dot { border-color: var(--portal-green-dark); color: #fff; background: var(--portal-green-dark); }
-.portal-workflow-step.is-current .portal-workflow-dot { border-color: var(--portal-orange); color: var(--portal-orange); background: var(--portal-orange-soft); }
+.portal-workflow-step.is-current .portal-workflow-dot { border-color: var(--portal-orange); color: var(--portal-orange); background: var(--portal-orange-soft); animation: portalCurrentStep 1.5s ease-out 2; }
 .portal-workflow-step.is-rejected .portal-workflow-dot { border-color: #dc2626; color: #dc2626; background: #fee2e2; }
 .portal-workflow-step.is-done .portal-workflow-line { background: var(--portal-green); }
 .portal-workflow-step > span:nth-child(3) { min-width: 0; }
@@ -1615,12 +1625,20 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
         border-radius: 8px;
         color: var(--portal-muted);
         background: transparent;
+        transition: color var(--portal-motion-fast), background-color var(--portal-motion-fast), transform var(--portal-motion-fast) var(--portal-ease-out);
     }
 
     .portal-bottom-nav button span { font-size: 18px; line-height: 1; font-weight: 900; }
     .portal-bottom-nav button small { font-size: 9px; line-height: 1; font-weight: 800; white-space: nowrap; }
-    .portal-bottom-nav button.is-active { color: var(--portal-green-dark); }
+    .portal-bottom-nav button:active { transform: scale(.96); }
+    .portal-bottom-nav button.is-active { color: var(--portal-green-dark); animation: portalTabIn var(--portal-motion-base) var(--portal-ease-out); }
     .portal-bottom-nav .portal-bottom-primary { color: #fff; background: var(--portal-green-dark); }
+}
+
+@media (hover: hover) {
+    .portal-home-current-button:hover,
+    .portal-recent-row-button:hover,
+    .student-switch-option:hover { transform: translateY(-1px); }
 }
 
 @media (max-width: 360px) {
@@ -1633,6 +1651,10 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .portal-sheet,
-    .portal-sheet-backdrop { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 1ms !important;
+    }
 }
