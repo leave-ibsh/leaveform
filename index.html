@@ -5506,7 +5506,7 @@
             if (!leaveId) return;
             const leave = AppDB.leave().find(item => item.id === leaveId);
             if (leave && isMakeupApprovalRequest(leave)) {
-                await parentSignMakeupLeave(leaveId, { redirectToPrint: false });
+                await parentSignMakeupLeave(leaveId, { redirectToPrint: true });
             } else {
                 await parentApproveLeave(leaveId);
             }
