@@ -2434,7 +2434,6 @@
             <div class="parent-review-actions">
                 <button type="button" class="parent-review-reject" onclick="rejectReviewedLeave()">Reject</button>
                 <button type="button" class="parent-review-approve" onclick="approveReviewedLeave()">Approve & sign</button>
-                <button type="button" class="parent-review-print" onclick="printReviewedLeave()" hidden>Print</button>
             </div>
         </section>
     </div>
@@ -4022,9 +4021,11 @@
             if (isWalkinLeave(rec) && !isOfficialLeave(rec)) return true;
             return Boolean(String(rec.reconciliationSourceId || '').trim());
         }
-        function leavePrintUrl(rec) {
+        function leavePrintUrl(rec, parentSignState) {
             const id = encodeURIComponent(String(rec && rec.id || ''));
-            return id ? 'leave-form.html?id=' + id + '&paper=1' : '#';
+            if (!id) return '#';
+            const state = String(parentSignState || '').trim();
+            return 'leave-form.html?id=' + id + '&paper=1' + (state ? '&parentSigned=' + encodeURIComponent(state) : '');
         }
         function findRelatedMakeupLeave(walkinLeave, allLeaves) {
             if (!walkinLeave) return null;
@@ -4101,26 +4102,28 @@
         function makeupPaperActionHtml(rec, mobile) {
             const rawId = String(rec && rec.id || '');
             const id = encodeURIComponent(rawId);
-            const jsId = escapeJsString(rawId);
-            const sign = AUTH_MODE === 'parent' && isLeaveAtParentStage(rec)
-                ? '<button type="button" class="' + (mobile ? 'm-leave-action-btn m-leave-approve' : 'approve-btn') + '" onclick="parentSignMakeupLeave(\'' + jsId + '\')">Parent sign</button>'
-                : '';
+            const sign = makeupParentSignActionHtml(rec, mobile);
+            if (AUTH_MODE === 'parent') return sign;
             const print = mobile
                 ? '<button type="button" class="m-leave-detail-btn" onclick="window.location.href=\'leave-form.html?id=' + id + '&paper=1\'">Print paper form</button>'
                 : '<a href="leave-form.html?id=' + id + '&paper=1" target="_blank" rel="noopener">Print paper form</a>';
-            return sign + print;
+            return print;
+        }
+        function makeupParentSignActionHtml(rec, mobile) {
+            if (AUTH_MODE !== 'parent' || !rec || !isMakeupApprovalRequest(rec)) return '';
+            if (!isLeaveAtParentStage(rec) && !hasParentApproval(rec)) return '';
+            const jsId = escapeJsString(rec.id || '');
+            return '<button type="button" class="' + (mobile ? 'm-leave-action-btn m-leave-approve' : 'approve-btn') + '" onclick="parentSignMakeupLeave(\'' + jsId + '\')">Parent sign</button>';
         }
         function makeupOnlineActionHtml(rec, relatedLeave, mobile) {
             if (relatedLeave && !hasReachedHomeroomReview(relatedLeave)) {
                 const relatedId = encodeURIComponent(String(relatedLeave.id || ''));
-                const relatedJsId = escapeJsString(relatedLeave.id || '');
-                const approve = AUTH_MODE === 'parent' && isLeaveAtParentStage(relatedLeave)
-                    ? '<button type="button" class="' + (mobile ? 'm-leave-action-btn m-leave-approve' : 'approve-btn') + '" onclick="parentSignMakeupLeave(\'' + relatedJsId + '\')">Parent sign</button>'
-                    : '';
+                const approve = makeupParentSignActionHtml(relatedLeave, mobile);
+                if (AUTH_MODE === 'parent' && approve) return approve;
                 const view = mobile
                     ? '<button type="button" class="m-leave-detail-btn" onclick="window.location.href=\'leave-form.html?id=' + relatedId + '\'">View pending form</button>'
                     : '<a href="leave-form.html?id=' + relatedId + '" target="_blank" rel="noopener">View pending form</a>';
-                return approve + view;
+                return view;
             }
             const rawId = String(rec && rec.id || '');
             const jsId = escapeJsString(rawId);
@@ -4428,13 +4431,16 @@
             const typeLabel = leaveTypeLabel(typeKey);
             let actionsHtml = opts.hideView ? '' : '<a href="leave-form.html?id=' + encodeURIComponent(rec.id) + '" target="_blank" rel="noopener">View</a>';
             if (opts.extraActionsHtml) actionsHtml += opts.extraActionsHtml;
+            if (!opts.hideParentActions && AUTH_MODE === 'parent' && !isWalkinLeave(rec) && isMakeupApprovalRequest(rec) && (isLeaveAtParentStage(rec) || hasParentApproval(rec))) {
+                actionsHtml = makeupParentSignActionHtml(rec, false);
+            }
             if (!opts.hideParentActions && AUTH_MODE === 'parent' && status === 'pending' && !isWalkinLeave(rec)) {
                 const settings = AppDB.getSettings ? AppDB.getSettings() : {};
                 const workflow = settings.approvalWorkflow || [];
                 const currentStage = workflow[rec.currentStageIndex || 0];
                 if (isParentApprovalStage(currentStage)) {
                     if (isMakeupApprovalRequest(rec)) {
-                        actionsHtml += '<button type="button" class="approve-btn" onclick="parentSignMakeupLeave(\'' + rec.id + '\')">Parent sign</button>';
+                        actionsHtml = makeupParentSignActionHtml(rec, false);
                     } else {
                         actionsHtml += '<button type="button" class="approve-btn" onclick="parentApproveLeave(\'' + rec.id + '\')">Approve</button>' +
                             '<button type="button" class="reject-btn" onclick="parentRejectLeave(\'' + rec.id + '\')">Reject</button>';
@@ -4645,17 +4651,18 @@
             refreshMakeupReminder({ showDialog: false });
             applyMentalHealthGate();
         }
-        // Optional comment prompt shown before the signature pad.
-        // Returns string (may be empty) when confirmed, or null when cancelled.
+        // Required parent comment shown before the signature pad.
+        // Returns a non-empty string when confirmed, or null when cancelled.
         function _promptParentCommentDialog(stageName) {
             return new Promise(resolve => {
                 const overlay = document.createElement('div');
                 overlay.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(15,23,42,0.6); display:flex; align-items:center; justify-content:center; padding:20px;';
                 overlay.innerHTML = `
                   <div style="background:#fff; border-radius:16px; padding:28px; max-width:480px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,0.2);">
-                    <h3 style="margin:0 0 8px; font-size:1.1rem; font-weight:800;">Approve Leave · Comment (optional)</h3>
-                    <p style="color:#64748b; font-size:0.85rem; margin:0 0 16px; white-space:pre-line;">${stageName ? ('Stage: ' + stageName + '\n') : ''}Add an optional note for the next reviewer, or continue without one.</p>
-                    <textarea id="_pCommentInput" rows="3" placeholder="(optional)" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-family:inherit; font-size:0.95rem; resize:vertical;"></textarea>
+                    <h3 style="margin:0 0 8px; font-size:1.1rem; font-weight:800;">Parent sign · Comment required</h3>
+                    <p style="color:#64748b; font-size:0.85rem; margin:0 0 16px; white-space:pre-line;">${stageName ? ('Stage: ' + stageName + '\n') : ''}Enter a comment for the next reviewer before signing.</p>
+                    <textarea id="_pCommentInput" rows="3" placeholder="Enter required comment" required aria-describedby="_pCommentError" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-family:inherit; font-size:0.95rem; resize:vertical;"></textarea>
+                    <p id="_pCommentError" role="alert" hidden style="margin:8px 0 0; color:#b91c1c; font-size:0.82rem; font-weight:700;">Comment is required.</p>
                     <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
                       <button id="_pCommentCancel" style="padding:8px 18px; border:1px solid #cbd5e1; background:#fff; border-radius:999px; font-weight:700; cursor:pointer;">Cancel</button>
                       <button id="_pCommentOk" style="padding:8px 18px; border:none; background:#10b981; color:#fff; border-radius:999px; font-weight:700; cursor:pointer;">Continue → Sign</button>
@@ -4663,10 +4670,27 @@
                   </div>`;
                 document.body.appendChild(overlay);
                 const ta = overlay.querySelector('#_pCommentInput');
+                const error = overlay.querySelector('#_pCommentError');
                 ta.focus();
                 const close = (val) => { document.body.removeChild(overlay); resolve(val); };
                 overlay.querySelector('#_pCommentCancel').onclick = () => close(null);
-                overlay.querySelector('#_pCommentOk').onclick = () => close(String(ta.value || '').trim());
+                overlay.querySelector('#_pCommentOk').onclick = () => {
+                    const value = String(ta.value || '').trim();
+                    if (!value) {
+                        ta.setAttribute('aria-invalid', 'true');
+                        ta.style.borderColor = '#b91c1c';
+                        error.hidden = false;
+                        ta.focus();
+                        return;
+                    }
+                    close(value);
+                };
+                ta.addEventListener('input', () => {
+                    if (!String(ta.value || '').trim()) return;
+                    ta.removeAttribute('aria-invalid');
+                    ta.style.borderColor = '#cbd5e1';
+                    error.hidden = true;
+                });
                 overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
             });
         }
@@ -4678,19 +4702,19 @@
             const stage = workflow[leave.currentStageIndex || 0];
             if (!isParentApprovalStage(stage)) return;
             const parentEmail = (AUTH_USER && AUTH_USER.email) ? AUTH_USER.email : '';
-            // Optional comment first (give parent a chance to add a note for staff)
             const comment = await _promptParentCommentDialog(stage && stage.name);
             if (comment === null) return; // cancelled
-            let signature = null;
-            if (window.SignatureDialog && typeof window.SignatureDialog.open === 'function') {
-                signature = await window.SignatureDialog.open({
-                    email: parentEmail,
-                    title: 'Sign to approve',
-                    subtitle: 'Sign in the box below · ' + (stage.name || 'Parent approval'),
-                    confirmText: '✓ Confirm approval',
-                });
-                if (!signature) return; // cancelled
+            if (!window.SignatureDialog || typeof window.SignatureDialog.open !== 'function') {
+                toast('Signature pad is not available. Please reload and try again.', 'error');
+                return;
             }
+            const signature = await window.SignatureDialog.open({
+                email: parentEmail,
+                title: 'Parent sign',
+                subtitle: 'Sign in the box below · ' + (stage.name || 'Parent approval'),
+                confirmText: 'Confirm signature',
+            });
+            if (!signature) return; // cancelled
             let isFinal = false;
             const updated = await AppDB.updateLeaveTransaction(leaveId, freshLeave => {
                 const freshStage = workflow[freshLeave.currentStageIndex || 0];
@@ -4704,9 +4728,9 @@
                     action: 'approved',
                     by: parentEmail || 'parent',
                     at: new Date().toISOString(),
-                    comment: String(comment || ''),
+                    comment: comment,
+                    signature: signature,
                 };
-                if (signature) entry.signature = signature;
                 history.push(entry);
                 const nextIdx = AppDB.nextApplicableStageIndex(workflow, freshLeave, (freshLeave.currentStageIndex || 0) + 1);
                 isFinal = nextIdx === -1;
@@ -4719,7 +4743,7 @@
                     status: 'pending'
                 };
             });
-            if (isFinal) {
+            if (isFinal && !options.redirectToPrint) {
                 toast('Signature recorded. A staff member will finalize this leave shortly.', 'info');
             }
             if (updated && updated.status === 'approved') {
@@ -4727,7 +4751,7 @@
             }
             const paperWalkinApproval = updated && isWalkinLeave(updated)
                 && isTruancyFromMissingMakeup(updated, AppDB.getLeavesByStudentNo(updated.studentNo || ''));
-            if (paperWalkinApproval) {
+            if (paperWalkinApproval && !options.redirectToPrint) {
                 toast('Parent signature recorded. Please print the paper form for homeroom signature and Discipline Office submission.', 'info');
             }
             if (window.IBSHNotifications && updated && !paperWalkinApproval) {
@@ -4745,7 +4769,7 @@
             renderSideToolbar(CURRENT_STUDENT);
             refreshMakeupReminder({ showDialog: false });
             if (options.redirectToPrint && updated) {
-                window.location.href = leavePrintUrl(updated);
+                window.location.href = leavePrintUrl(updated, 'recorded');
             }
             return updated;
         }
@@ -4754,6 +4778,10 @@
             if (!leave) return;
             if (!isMakeupApprovalRequest(leave)) {
                 await parentApproveLeave(leaveId);
+                return;
+            }
+            if (hasParentApproval(leave)) {
+                window.location.href = leavePrintUrl(leave, 'existing');
                 return;
             }
             await parentApproveLeave(leaveId, {
@@ -5104,11 +5132,15 @@
                 : [];
             const rec = all.find(item => String(item && item.id || '') === String(leaveId || ''));
             if (!rec) return;
+            if (AUTH_MODE === 'parent' && isMakeupApprovalRequest(rec) && (isLeaveAtParentStage(rec) || hasParentApproval(rec))) {
+                await parentSignMakeupLeave(rec.id);
+                return;
+            }
             if (portalRecentNeedsAttention(rec, all)) {
                 const related = findRelatedMakeupLeave(rec, all);
                 if (isTruancyFromMissingMakeup(rec, all)) {
                     if (AUTH_MODE === 'parent' && isLeaveAtParentStage(rec)) {
-                        openParentReview(rec.id);
+                        await parentSignMakeupLeave(rec.id);
                         return;
                     }
                     window.location.href = 'leave-form.html?id=' + encodeURIComponent(rec.id || '') + '&paper=1';
@@ -5116,7 +5148,7 @@
                 }
                 if (related && !hasReachedHomeroomReview(related)) {
                     if (AUTH_MODE === 'parent' && isLeaveAtParentStage(related)) {
-                        openParentReview(related.id);
+                        await parentSignMakeupLeave(related.id);
                         return;
                     }
                     window.location.href = 'leave-form.html?id=' + encodeURIComponent(related.id || '');
@@ -5387,10 +5419,12 @@
                 const attentionButton = document.getElementById(prefix + 'AttentionButton');
                 attention.classList.toggle('is-clear', PORTAL_HOME_ATTENTION.type === 'none');
                 if (PORTAL_HOME_ATTENTION.type === 'signature') {
+                    const attentionLeave = signatureLeaves[0];
+                    const makeupSignature = isMakeupApprovalRequest(attentionLeave);
                     portalHomeSet(prefix, 'AttentionKicker', 'Action required');
                     portalHomeSet(prefix, 'AttentionTitle', signatureLeaves.length + ' form' + (signatureLeaves.length === 1 ? '' : 's') + ' need your signature');
-                    portalHomeSet(prefix, 'AttentionText', 'Review and sign before the school approval process can continue.');
-                    attentionButton.textContent = 'Review & sign';
+                    portalHomeSet(prefix, 'AttentionText', makeupSignature ? 'Add the required comment and parent signature to continue.' : 'Review and sign before the school approval process can continue.');
+                    attentionButton.textContent = makeupSignature ? 'Parent sign' : 'Review & sign';
                 } else if (PORTAL_HOME_ATTENTION.type === 'makeup') {
                     portalHomeSet(prefix, 'AttentionKicker', 'Make-up reminder');
                     portalHomeSet(prefix, 'AttentionTitle', makeup.length + ' make-up leave form' + (makeup.length === 1 ? '' : 's') + ' need attention');
@@ -5451,6 +5485,11 @@
         async function portalHomeAttentionAction() {
             const action = PORTAL_HOME_ATTENTION || {};
             if (action.type === 'signature' && action.leaveId) {
+                const leave = AppDB.leave().find(item => String(item && item.id || '') === String(action.leaveId));
+                if (leave && isMakeupApprovalRequest(leave)) {
+                    await parentSignMakeupLeave(leave.id);
+                    return;
+                }
                 openParentReview(action.leaveId);
                 return;
             }
@@ -5468,9 +5507,13 @@
                 openDesktopRequests();
             }
         }
-        function openParentReview(leaveId) {
+        async function openParentReview(leaveId) {
             const leave = AppDB.leave().find(item => item.id === leaveId);
             if (!leave) return;
+            if (isMakeupApprovalRequest(leave)) {
+                await parentSignMakeupLeave(leaveId);
+                return;
+            }
             PARENT_REVIEW_LEAVE_ID = leaveId;
             const summary = document.getElementById('parentReviewSummary');
             const studentName = [leave.englishName, leave.chineseName].filter(Boolean).join(' · ') || portalStudentName(CURRENT_STUDENT);
@@ -5485,11 +5528,8 @@
             const modal = document.getElementById('parentReviewModal');
             const rejectBtn = modal ? modal.querySelector('.parent-review-reject') : null;
             const approveBtn = modal ? modal.querySelector('.parent-review-approve') : null;
-            const printBtn = modal ? modal.querySelector('.parent-review-print') : null;
-            const isMakeup = isMakeupApprovalRequest(leave);
-            if (rejectBtn) rejectBtn.hidden = isMakeup;
-            if (approveBtn) approveBtn.textContent = isMakeup ? 'Sign' : 'Approve & sign';
-            if (printBtn) printBtn.hidden = !isMakeup;
+            if (rejectBtn) rejectBtn.hidden = false;
+            if (approveBtn) approveBtn.textContent = 'Approve & sign';
             modal.hidden = false;
             modal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('portal-modal-open');
@@ -5506,7 +5546,7 @@
             if (!leaveId) return;
             const leave = AppDB.leave().find(item => item.id === leaveId);
             if (leave && isMakeupApprovalRequest(leave)) {
-                await parentSignMakeupLeave(leaveId, { redirectToPrint: true });
+                await parentSignMakeupLeave(leaveId);
             } else {
                 await parentApproveLeave(leaveId);
             }
@@ -5521,17 +5561,6 @@
                 return;
             }
             await parentRejectLeave(leaveId);
-        }
-        async function printReviewedLeave() {
-            const leaveId = PARENT_REVIEW_LEAVE_ID;
-            if (!leaveId) return;
-            const leave = AppDB.leave().find(item => item.id === leaveId);
-            if (leave && isMakeupApprovalRequest(leave) && isLeaveAtParentStage(leave)) {
-                closeParentReview();
-                await parentSignMakeupLeave(leaveId, { redirectToPrint: true });
-                return;
-            }
-            window.open('leave-form.html?id=' + encodeURIComponent(leaveId) + '&paper=1', '_blank', 'noopener');
         }
         function mScrollHomeTo(id) {
             if (id === 'mHomeRecentSection') { mGoRecords(); return; }
@@ -5654,13 +5683,15 @@
                 stageHtml = '<div class="m-leave-note">' + escapeHtml(makeupFollowupInstructionText(rec, relatedMakeup)) + '</div>';
                 actionsHtml = makeupOnlineActionHtml(rec, relatedMakeup, true);
             }
-            if (!opts.truancy && AUTH_MODE === 'parent' && status === 'pending' && !isWalkinLeave(rec)) {
+            if (!opts.truancy && AUTH_MODE === 'parent' && !isWalkinLeave(rec) && isMakeupApprovalRequest(rec) && (isLeaveAtParentStage(rec) || hasParentApproval(rec))) {
+                actionsHtml = makeupParentSignActionHtml(rec, true);
+            } else if (!opts.truancy && AUTH_MODE === 'parent' && status === 'pending' && !isWalkinLeave(rec)) {
                 const settings = AppDB.getSettings ? AppDB.getSettings() : {};
                 const workflow = settings.approvalWorkflow || [];
                 const currentStage = workflow[rec.currentStageIndex || 0];
                 if (isParentApprovalStage(currentStage)) {
                     const parentButtons = isMakeupApprovalRequest(rec)
-                        ? '<button type="button" class="m-leave-action-btn m-leave-approve" onclick="parentSignMakeupLeave(\'' + jsId + '\')">Parent sign</button>'
+                        ? makeupParentSignActionHtml(rec, true)
                         : '<button type="button" class="m-leave-action-btn m-leave-approve" onclick="parentApproveLeave(\'' + jsId + '\')">Approve</button>' +
                           '<button type="button" class="m-leave-action-btn m-leave-reject" onclick="parentRejectLeave(\'' + jsId + '\')">Reject</button>';
                     actionsHtml = parentButtons + actionsHtml;
