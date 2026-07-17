@@ -250,6 +250,22 @@ service cloud.firestore {
           'totalPeriods',
           'returnConfirmed',
           'returnDate'
+      ]);
+    }
+
+    // A parent-signed make-up form that missed the online deadline is kept
+    // outside the normal approval queue. Admin completes it only after the
+    // signed paper copy reaches the Discipline Office.
+    function isPaperMakeupLifecycleUpdate() {
+      return !isWalkinLeaveData(resource.data)
+        && resource.data.get('reconciliationSourceId', '') != ''
+        && resource.data.get('makeupMode', '') == 'paper'
+        && changedLeaveKeys().hasOnly([
+          'status',
+          'stageHistory',
+          'reconciliationStatus',
+          'reconciledAt',
+          'reconciledBy'
         ]);
     }
 
@@ -359,19 +375,41 @@ service cloud.firestore {
           && leaveData.get('submittedBy', '').lower() == userEmail()
           && leaveData.get('submittedByRole', '') in ['parent', 'student']
           && (
-            userEmail() in leaveData.get('studentEmails', [])
-            || userEmail() in leaveData.get('parentEmails', [])
+            (leaveData.get('submittedByRole', '') == 'student'
+              && userEmail() in leaveData.get('studentEmails', []))
+            || (leaveData.get('submittedByRole', '') == 'parent'
+              && userEmail() in leaveData.get('parentEmails', []))
           )
+          && (leaveData.get('stageHistory', []).size() == 0
+            || leaveData.get('submittedByRole', '') == 'parent')
           && familyCreateHistoryOk(leaveData)
         );
     }
 
     // 家長簽核：append 一筆 by==self 的 stageHistory entry。
     function isLeaveFamilyApproval() {
-      return (isLeaveParent(resource.data) || isLeaveStudent(resource.data))
+      return isLeaveParent(resource.data)
         && resource.data.get('status', 'pending') == 'pending'
         && currentWorkflowStage(resource.data).get('approverType', '') == 'parent'
-        && changedLeaveKeys().hasOnly(['stageHistory', 'currentStageIndex', 'status'])
+        && changedLeaveKeys().hasOnly([
+          'stageHistory',
+          'currentStageIndex',
+          'status',
+          'parentSignedAt',
+          'makeupMode',
+          'paperRequiredAt'
+        ])
+        && (!changedLeaveKeys().hasAny(['parentSignedAt'])
+          || (
+            resource.data.get('reconciliationSourceId', '') != ''
+            && request.resource.data.get('parentSignedAt', '') is string
+          ))
+        && (!changedLeaveKeys().hasAny(['makeupMode', 'paperRequiredAt'])
+          || (
+            resource.data.get('reconciliationSourceId', '') != ''
+            && request.resource.data.get('makeupMode', '') == 'paper'
+            && request.resource.data.get('paperRequiredAt', '') is string
+          ))
         && familyAppendedOneEntryBySelf()
         && familyWorkflowTransitionOk();
     }
@@ -448,6 +486,8 @@ service cloud.firestore {
         || (isStaff() && isSuperAdmin() && isContactSnapshotUpdate())
         // Office-created walk-in records: archive / reconcile lifecycle updates
         || (isStaff() && isAdmin() && isWalkinLifecycleUpdate())
+        // Parent-signed paper form: office verification completes the linked form.
+        || (isStaff() && isAdmin() && canManageStudentRecord(resource.data) && isPaperMakeupLifecycleUpdate())
         // 家長補簽 — 嚴格 append-only，僅可加自己簽的那一筆
         || isLeaveFamilyApproval()
         // 家長/學生補假單同步登記欄位

@@ -5385,7 +5385,11 @@ function isWalkinLeave(leave) {
     || leave.submittedByRole === 'staff';
 }
 function isApprovalQueueLeave(leave) {
-  return !!leave && (leave.status || 'pending') === 'pending' && !isWalkinLeave(leave) && !leave.archived;
+  return !!leave
+    && (leave.status || 'pending') === 'pending'
+    && !isWalkinLeave(leave)
+    && String(leave.makeupMode || '') !== 'paper'
+    && !leave.archived;
 }
 function leaveTypeKey(leave) {
   return leave ? (leave.leaveReason || leave.leaveType || '') : '';
@@ -5594,11 +5598,34 @@ async function confirmPaperMakeupLeave(id) {
   const note = window.prompt('Paper make-up form note:', 'Parent-signed paper form verified by office');
   if (note === null) return;
   try {
+    const related = findReconRelatedOnlineLeave(leave);
+    const completedAt = new Date().toISOString();
+    const completedBy = currentAdminActor();
     await AppDB.updateLeaveTransaction(id, freshLeave => ({
       ...reconcileLeavePayload(freshLeave, null, note.trim() || 'Parent-signed paper form verified by office.', 'approved'),
       returnConfirmed: true,
       returnDate: today(),
     }));
+    if (related && String(related.makeupMode || '') === 'paper') {
+      await AppDB.updateLeaveTransaction(related.id, freshForm => {
+        const history = Array.isArray(freshForm.stageHistory) ? freshForm.stageHistory.slice() : [];
+        history.push({
+          stageId: 'paper-verified',
+          stageName: 'Paper make-up form verified',
+          action: 'approved',
+          by: completedBy,
+          at: completedAt,
+          comment: note.trim() || 'Parent-signed paper form verified by office.',
+        });
+        return {
+          status: 'approved',
+          reconciliationStatus: 'reconciled',
+          reconciledAt: completedAt,
+          reconciledBy: completedBy,
+          stageHistory: history,
+        };
+      });
+    }
     toast('Paper make-up form completed.');
     refreshDashboard();
     refreshLeaves();

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Make-up Leave | IBSH</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="makeup-ui.css?v=20260717-1">
+  <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js?v=20260706-notify3"></script>
+  <script src="shared-db.js?v=20260717-makeup1"></script>
+  <script src="signature-dialog.js?v=20260706-notify3"></script>
+  <script src="notification-service.js?v=20260706-notify3"></script>
+  <script src="makeup-service.js?v=20260717-1"></script>
+</head>
+<body>
+  <div class="mk-shell">
+    <aside class="mk-sidebar">
+      <a class="mk-brand" href="index.html">
+        <span class="mk-brand-mark">IBSH</span>
+        <span><strong>Leave Portal</strong><small>Attendance Operations</small></span>
+      </a>
+      <nav class="mk-nav" aria-label="Leave portal navigation">
+        <a href="index.html"><span class="mk-nav-icon" aria-hidden="true">⌂</span>Dashboard</a>
+        <a href="index.html#new-leave"><span class="mk-nav-icon" aria-hidden="true">＋</span>New Leave Request</a>
+        <a href="makeup.html" aria-current="page"><span class="mk-nav-icon" aria-hidden="true">↻</span>Make-up Leave</a>
+        <a href="index.html#records"><span class="mk-nav-icon" aria-hidden="true">▤</span>My Requests</a>
+      </nav>
+      <div class="mk-sidebar-foot">International Bilingual School at Hsinchu Science Park</div>
+    </aside>
+
+    <main class="mk-main">
+      <header class="mk-topbar">
+        <a class="mk-mobile-brand" href="index.html"><span class="mk-brand-mark">IBSH</span><span>Make-up Leave</span></a>
+        <div></div>
+        <div class="mk-account">
+          <span class="mk-avatar" id="accountAvatar">--</span>
+          <span class="mk-account-copy"><strong id="accountName">Loading</strong><small id="accountRole">Secure portal</small></span>
+          <button type="button" class="mk-icon-button" id="refreshButton" aria-label="Refresh cases" title="Refresh cases">↻</button>
+          <button type="button" class="mk-signout" id="signoutButton">Sign out</button>
+        </div>
+      </header>
+
+      <div class="mk-content">
+        <div id="loadingState" class="mk-loading"><span>Loading make-up cases</span></div>
+
+        <div id="portalContent" hidden>
+          <header class="mk-page-head">
+            <div>
+              <p class="mk-eyebrow">Walk-in follow-up</p>
+              <h1>Make-up leave</h1>
+              <p>Complete the leave record, add the required parent signature, and follow its school review status.</p>
+            </div>
+            <div class="mk-student-select-wrap" id="studentPickerWrap" hidden>
+              <label for="studentPicker">Viewing student</label>
+              <select id="studentPicker"></select>
+            </div>
+          </header>
+
+          <section class="mk-summary" aria-label="Make-up case summary">
+            <article><strong id="actionCount">0</strong><span>Action needed</span></article>
+            <article><strong id="reviewCount">0</strong><span>School review</span></article>
+            <article><strong id="completedCount">0</strong><span>Completed</span></article>
+          </section>
+
+          <div class="mk-tabs" role="tablist" aria-label="Filter make-up cases">
+            <button type="button" class="mk-tab is-active" data-filter="all" role="tab" aria-selected="true">All cases</button>
+            <button type="button" class="mk-tab" data-filter="action" role="tab" aria-selected="false">Action needed</button>
+            <button type="button" class="mk-tab" data-filter="review" role="tab" aria-selected="false">School review</button>
+            <button type="button" class="mk-tab" data-filter="completed" role="tab" aria-selected="false">Completed</button>
+          </div>
+
+          <div class="mk-workspace">
+            <section class="mk-case-list" id="caseList" aria-label="Make-up leave cases"></section>
+            <section id="caseDetail" aria-live="polite"></section>
+          </div>
+        </div>
+
+        <section id="errorState" class="mk-empty" hidden>
+          <div>
+            <div class="mk-empty-mark">!</div>
+            <h2 id="errorTitle">Unable to load make-up cases</h2>
+            <p id="errorMessage">Return to the portal and sign in again.</p>
+            <div class="mk-actions"><a class="mk-button primary" href="index.html">Return to sign in</a></div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <div class="mk-toast" id="toast" hidden role="status"></div>
+
+  <script>
+    const DB = window.AppDB;
+    const Makeup = window.MakeupService;
+    let authUser = null;
+    let accountRole = '';
+    let students = [];
+    let currentStudent = null;
+    let currentCases = [];
+    let selectedCaseId = '';
+    let activeFilter = 'all';
+    let toastTimer = null;
+
+    function clean(value) { return String(value == null ? '' : value).trim(); }
+    function lower(value) { return clean(value).toLowerCase(); }
+    function escapeHtml(value) {
+      return clean(value).replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+    }
+    function initials(student) {
+      const name = clean(student && (student.englishName || student.chineseName)) || clean(authUser && authUser.email);
+      return name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('') || '--';
+    }
+    function studentName(student) {
+      return clean(student && (student.englishName || student.chineseName)) || 'Student';
+    }
+    function formatDate(value) {
+      const date = new Date(clean(value).slice(0, 10) + 'T00:00:00');
+      if (Number.isNaN(date.getTime())) return clean(value) || '--';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function dateParts(value) {
+      const date = new Date(clean(value).slice(0, 10) + 'T00:00:00');
+      if (Number.isNaN(date.getTime())) return { day: '--', month: '--' };
+      return { day: String(date.getDate()).padStart(2, '0'), month: date.toLocaleDateString('en-US', { month: 'short' }) };
+    }
+    function dateRange(record) {
+      const from = clean(record && record.fromDate);
+      const to = clean(record && (record.toDate || record.fromDate));
+      return from === to ? formatDate(from) : formatDate(from) + ' to ' + formatDate(to);
+    }
+    function caseTime(record) {
+      const from = clean(record && record.fromTime) || '08:10';
+      const to = clean(record && record.toTime) || '16:10';
+      return from + '–' + to;
+    }
+    function showToast(message, isError) {
+      const element = document.getElementById('toast');
+      element.textContent = message;
+      element.className = 'mk-toast' + (isError ? ' error' : '');
+      element.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { element.hidden = true; }, 4200);
+    }
+    function showError(title, message) {
+      document.getElementById('loadingState').hidden = true;
+      document.getElementById('portalContent').hidden = true;
+      document.getElementById('errorState').hidden = false;
+      document.getElementById('errorTitle').textContent = title;
+      document.getElementById('errorMessage').textContent = message;
+    }
+    function initFirebase() {
+      if (typeof firebase === 'undefined' || !window.__FIREBASE_CONFIG__) throw new Error('Firebase is unavailable.');
+      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(window.__FIREBASE_CONFIG__);
+    }
+    function signedInUser() {
+      initFirebase();
+      if (firebase.auth().currentUser) return Promise.resolve(firebase.auth().currentUser);
+      return new Promise(resolve => {
+        const unsubscribe = firebase.auth().onAuthStateChanged(user => { unsubscribe(); resolve(user || null); });
+      });
+    }
+    function allStudentLeaves() {
+      return currentStudent ? DB.getLeavesByStudentNo(currentStudent.studentNo || currentStudent.studentId || '') : [];
+    }
+    function selectedCase() {
+      return currentCases.find(item => item.id === selectedCaseId) || null;
+    }
+    function stateInstruction(item) {
+      const map = {
+        online_available: 'The online form must reach homeroom review within three calendar days after the walk-in leave ends.',
+        awaiting_parent: 'The form is saved and waiting for a parent comment and signature.',
+        school_review: 'The parent signature is recorded. The form is now moving through school review.',
+        paper_required: Makeup.PAPER_INSTRUCTION,
+        official_paper: 'Official leave follow-up uses a paper form. Print the form and submit the signed copy to the Discipline Office.',
+        completed: 'The Discipline Office has completed this make-up leave record.',
+      };
+      return map[item.state] || '';
+    }
+    function caseCard(item) {
+      const parts = dateParts(item.walkin.fromDate);
+      const selected = item.id === selectedCaseId;
+      return '<button type="button" class="mk-case-card' + (selected ? ' is-selected' : '') + '" data-case-id="' + escapeHtml(item.id) + '" aria-pressed="' + (selected ? 'true' : 'false') + '">' +
+        '<span class="mk-date-tile"><strong>' + parts.day + '</strong><small>' + parts.month + '</small></span>' +
+        '<span class="mk-case-copy"><strong>' + escapeHtml(item.typeLabel) + ' leave</strong><small>' + escapeHtml(dateRange(item.walkin)) + '<br>' + escapeHtml(caseTime(item.walkin)) + '</small><em class="mk-status ' + escapeHtml(item.meta.tone) + '">' + escapeHtml(item.meta.label) + '</em></span>' +
+        '<span class="mk-case-arrow" aria-hidden="true">›</span>' +
+      '</button>';
+    }
+    function filteredCases() {
+      return activeFilter === 'all' ? currentCases : currentCases.filter(item => item.meta.group === activeFilter);
+    }
+    function renderCaseList() {
+      const list = filteredCases();
+      const container = document.getElementById('caseList');
+      if (!list.length) {
+        container.innerHTML = '<div class="mk-empty"><div><div class="mk-empty-mark">✓</div><h2>No cases in this view</h2><p>Choose another filter to see the remaining make-up records.</p></div></div>';
+        return;
+      }
+      container.innerHTML = list.map(caseCard).join('');
+      container.querySelectorAll('[data-case-id]').forEach(button => button.addEventListener('click', () => {
+        selectedCaseId = button.dataset.caseId;
+        const url = new URL(window.location.href);
+        url.searchParams.set('case', selectedCaseId);
+        history.replaceState({}, '', url);
+        render();
+        if (window.innerWidth <= 900) document.getElementById('caseDetail').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }));
+    }
+    function factsMarkup(item) {
+      const studentMeta = [clean(currentStudent.className), currentStudent.seatNo ? 'Seat ' + currentStudent.seatNo : '', currentStudent.studentNo ? 'No. ' + currentStudent.studentNo : ''].filter(Boolean).join(' · ');
+      return '<div class="mk-facts">' +
+        '<div class="mk-fact"><span>Student</span><strong>' + escapeHtml(studentName(currentStudent)) + '<br>' + escapeHtml(studentMeta) + '</strong></div>' +
+        '<div class="mk-fact"><span>Leave date</span><strong>' + escapeHtml(dateRange(item.walkin)) + '<br>' + escapeHtml(caseTime(item.walkin)) + '</strong></div>' +
+        '<div class="mk-fact"><span>Leave type</span><strong>' + escapeHtml(item.typeLabel) + '</strong></div>' +
+        '<div class="mk-fact"><span>Online deadline</span><strong>' + escapeHtml(formatDate(item.deadline)) + '</strong></div>' +
+      '</div>';
+    }
+    function commentForm(label, buttonLabel, actionName, danger) {
+      return '<form class="mk-form" id="caseActionForm">' +
+        '<label for="caseComment">' + escapeHtml(label) + ' <span aria-hidden="true">*</span></label>' +
+        '<textarea id="caseComment" maxlength="800" required placeholder="Enter the information required for this make-up leave."></textarea>' +
+        '<p class="mk-field-error" id="caseCommentError"></p>' +
+        '<div class="mk-actions"><button type="submit" class="mk-button ' + (danger ? 'danger' : 'primary') + '" data-action="' + escapeHtml(actionName) + '">' + escapeHtml(buttonLabel) + '</button></div>' +
+      '</form>';
+    }
+    function signedFormAction(item, label) {
+      const record = item.form || item.walkin;
+      const href = Makeup.printUrl(record, item.parentSigned ? 'existing' : '');
+      return '<div class="mk-actions"><a class="mk-button primary" href="' + escapeHtml(href) + '">▤ ' + escapeHtml(label) + '</a></div>';
+    }
+    function detailBody(item) {
+      const noticeClass = item.state === 'paper_required' || item.state === 'official_paper' ? ' danger' : item.state === 'completed' ? ' success' : item.state === 'awaiting_parent' ? ' warning' : '';
+      let body = factsMarkup(item) + '<div class="mk-notice' + noticeClass + '"><strong>' + escapeHtml(item.meta.label) + '</strong>' + escapeHtml(stateInstruction(item)) + '</div>';
+      if (item.state === 'online_available') {
+        body += accountRole === 'parent'
+          ? commentForm('Parent comment', 'Parent sign and continue', 'create-and-sign', false)
+          : commentForm('Reason for leave', 'Submit for parent sign', 'create-form', false);
+      } else if (item.state === 'awaiting_parent') {
+        if (accountRole === 'parent' && item.form && Makeup.isAtParentStage(item.form)) {
+          body += commentForm('Parent comment', 'Parent sign and continue', 'sign-existing', false);
+        } else {
+          body += '<div class="mk-notice warning"><strong>Waiting for parent</strong>A parent must sign in with a registered parent email to continue this case.</div>';
+          if (item.form) body += signedFormAction(item, 'View form');
+        }
+      } else if (item.state === 'paper_required') {
+        if (item.parentSigned && item.form) {
+          body += signedFormAction(item, 'Open signed paper form');
+        } else if (accountRole === 'parent') {
+          body += commentForm('Parent comment', 'Parent sign and open paper form', item.form ? 'sign-paper' : 'create-paper', true);
+        } else {
+          body += '<div class="mk-notice danger"><strong>Parent signature required</strong>A parent must sign in with a registered parent email. The signed form will open for printing immediately.</div>';
+          if (item.form) body += signedFormAction(item, 'View form status');
+        }
+      } else if (item.state === 'official_paper') {
+        body += signedFormAction(item, 'Open paper form');
+      } else if (item.state === 'school_review') {
+        body += signedFormAction(item, item.parentSigned ? 'Open signed form' : 'View form');
+      } else if (item.state === 'completed') {
+        body += signedFormAction(item, 'View completed form');
+      }
+      return body;
+    }
+    function renderCaseDetail() {
+      const item = selectedCase();
+      const container = document.getElementById('caseDetail');
+      if (!item) {
+        container.innerHTML = '<div class="mk-empty"><div><div class="mk-empty-mark">✓</div><h2>No make-up leave required</h2><p>Walk-in leave records that need follow-up will appear here.</p></div></div>';
+        return;
+      }
+      container.innerHTML = '<article class="mk-detail"><header class="mk-detail-head"><div class="mk-detail-title-row"><div><p class="mk-eyebrow">Case ' + escapeHtml(item.id.slice(-8).toUpperCase()) + '</p><h2>' + escapeHtml(item.typeLabel) + ' leave follow-up</h2></div><em class="mk-status ' + escapeHtml(item.meta.tone) + '">' + escapeHtml(item.meta.label) + '</em></div><p>Walk-in record created by the school. Complete the next required step below.</p></header><div class="mk-detail-body">' + detailBody(item) + '</div></article>';
+      const form = document.getElementById('caseActionForm');
+      if (form) form.addEventListener('submit', handleCaseAction);
+    }
+    function render() {
+      if (!currentStudent) return;
+      currentCases = Makeup.casesForStudent(currentStudent, allStudentLeaves());
+      const requested = new URLSearchParams(window.location.search).get('case');
+      if (!currentCases.some(item => item.id === selectedCaseId)) selectedCaseId = currentCases.some(item => item.id === requested) ? requested : (currentCases[0] && currentCases[0].id || '');
+      document.getElementById('actionCount').textContent = currentCases.filter(item => item.meta.group === 'action').length;
+      document.getElementById('reviewCount').textContent = currentCases.filter(item => item.meta.group === 'review').length;
+      document.getElementById('completedCount').textContent = currentCases.filter(item => item.meta.group === 'completed').length;
+      renderCaseList();
+      renderCaseDetail();
+    }
+    function requireComment() {
+      const field = document.getElementById('caseComment');
+      const error = document.getElementById('caseCommentError');
+      const value = clean(field && field.value);
+      if (!value) {
+        if (error) error.textContent = 'A comment is required before continuing.';
+        if (field) field.focus();
+        return '';
+      }
+      if (error) error.textContent = '';
+      return value;
+    }
+    async function parentSignature(item) {
+      return window.SignatureDialog.open({
+        email: lower(authUser && authUser.email),
+        title: 'Parent signature',
+        subtitle: studentName(currentStudent) + ' · ' + item.typeLabel + ' leave · ' + dateRange(item.walkin),
+      });
+    }
+    async function notifyNext(record) {
+      if (!record || !window.IBSHNotifications) return;
+      try { await window.IBSHNotifications.notifyNext(record); }
+      catch (error) { console.warn('[Make-up] Notification failed:', error); }
+    }
+    async function createForm(item, options) {
+      const record = Makeup.buildFormRecord({
+        walkin: item.walkin,
+        student: currentStudent,
+        actorEmail: lower(authUser && authUser.email),
+        role: options.role,
+        reason: options.comment,
+        comment: options.comment,
+        signature: options.signature,
+        paperMode: options.paperMode,
+      });
+      const id = await DB.addLeave(record);
+      const saved = DB.leave().find(entry => entry.id === id);
+      await Makeup.markSourceSubmitting(item.walkin.id, id);
+      if (!options.paperMode) await notifyNext(saved);
+      return saved;
+    }
+    async function handleCaseAction(event) {
+      event.preventDefault();
+      const item = selectedCase();
+      const submit = event.submitter;
+      if (!item || !submit) return;
+      const action = submit.dataset.action;
+      const comment = requireComment();
+      if (!comment) return;
+      submit.disabled = true;
+      try {
+        if (action === 'create-form') {
+          await createForm(item, { role: 'student', comment, paperMode: false });
+          showToast('Make-up form submitted for parent signature.');
+          render();
+          return;
+        }
+        const signature = await parentSignature(item);
+        if (!signature) return;
+        if (action === 'create-and-sign' || action === 'create-paper') {
+          const saved = await createForm(item, { role: 'parent', comment, signature, paperMode: action === 'create-paper' });
+          window.location.href = Makeup.printUrl(saved, 'recorded');
+          return;
+        }
+        if (action === 'sign-existing' || action === 'sign-paper') {
+          const updated = await Makeup.signParent(item.form.id, {
+            actorEmail: lower(authUser && authUser.email),
+            comment,
+            signature,
+            paperMode: action === 'sign-paper',
+          });
+          if (action !== 'sign-paper') await notifyNext(updated);
+          window.location.href = Makeup.printUrl(updated, 'recorded');
+        }
+      } catch (error) {
+        console.error('[Make-up] Action failed:', error);
+        showToast(error && error.message ? error.message : 'Unable to complete this action.', true);
+      } finally {
+        submit.disabled = false;
+      }
+    }
+    function populateStudentPicker() {
+      const wrap = document.getElementById('studentPickerWrap');
+      const select = document.getElementById('studentPicker');
+      wrap.hidden = students.length < 2;
+      select.innerHTML = students.map(student => '<option value="' + escapeHtml(student.studentNo || student.studentId) + '">' + escapeHtml(studentName(student) + ' · ' + clean(student.className)) + '</option>').join('');
+      select.value = currentStudent.studentNo || currentStudent.studentId || '';
+      select.onchange = () => {
+        currentStudent = students.find(student => clean(student.studentNo || student.studentId) === select.value) || students[0];
+        selectedCaseId = '';
+        updateAccount();
+        render();
+      };
+    }
+    function updateAccount() {
+      document.getElementById('accountAvatar').textContent = initials(currentStudent);
+      document.getElementById('accountName').textContent = studentName(currentStudent);
+      document.getElementById('accountRole').textContent = accountRole === 'parent' ? 'Parent account' : 'Student account';
+    }
+    async function loadPortal() {
+      authUser = await signedInUser();
+      if (!authUser || !authUser.email) throw new Error('Please sign in before opening make-up leave.');
+      await DB.initForPortal(lower(authUser.email));
+      const status = DB.status();
+      if (status.mode !== 'firebase') throw new Error(status.error || 'Could not load leave records.');
+      const student = DB.getStudentByEmail(lower(authUser.email));
+      const children = DB.getStudentsByParentEmail(lower(authUser.email));
+      if (student) {
+        accountRole = 'student';
+        students = [student];
+      } else if (children.length) {
+        accountRole = 'parent';
+        students = children;
+      } else {
+        throw new Error('This email is not linked to a student or parent account.');
+      }
+      currentStudent = students[0];
+      updateAccount();
+      populateStudentPicker();
+      document.getElementById('loadingState').hidden = true;
+      document.getElementById('portalContent').hidden = false;
+      render();
+    }
+    document.querySelectorAll('.mk-tab').forEach(tab => tab.addEventListener('click', () => {
+      activeFilter = tab.dataset.filter;
+      document.querySelectorAll('.mk-tab').forEach(item => {
+        const selected = item === tab;
+        item.classList.toggle('is-active', selected);
+        item.setAttribute('aria-selected', String(selected));
+      });
+      if (!filteredCases().some(item => item.id === selectedCaseId)) selectedCaseId = filteredCases()[0] && filteredCases()[0].id || '';
+      renderCaseList();
+      renderCaseDetail();
+    }));
+    document.getElementById('refreshButton').addEventListener('click', () => window.location.reload());
+    document.getElementById('signoutButton').addEventListener('click', async () => {
+      try { await firebase.auth().signOut(); } finally { window.location.href = 'index.html'; }
+    });
+    loadPortal().catch(error => {
+      showError('Unable to load make-up cases', error && error.message ? error.message : 'Return to the portal and sign in again.');
+    });
+  </script>
+</body>
+</html>
