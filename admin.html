@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="admin-build" content="admin-class-filter-2026-07-06-v2">
+<meta name="admin-build" content="admin-mobile-carbon-2026-07-17-v1">
 <title>IBSH Attendance - Admin</title>
 <link rel="icon" href="data:,">
 <script>
@@ -15,7 +15,7 @@
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
 <script src="firebase-config.js?v=20260706-notify3"></script>
-<script src="shared-db.js?v=20260714-grade600"></script>
+<script src="shared-db.js?v=20260717-grade1000"></script>
 <script src="signature-dialog.js?v=20260706-notify3"></script>
 <script src="notification-service.js?v=20260706-notify3"></script>
 <style>
@@ -449,12 +449,6 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); c
   display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px;
 }
 .admin-auth-head-actions { display: flex; align-items: center; gap: 8px; }
-.admin-language-toggle {
-  min-width: 42px; min-height: 36px; padding: 0 10px; display: inline-flex; align-items: center; justify-content: center;
-  border: 1px solid var(--line); border-radius: 999px; color: var(--text-main); background: var(--surface-2);
-  font-size: .75rem; font-weight: 800; transition: background var(--motion-fast), color var(--motion-fast), transform var(--motion-fast);
-}
-.admin-language-toggle:hover { color: var(--text-dark); background: var(--surface-hover); transform: translateY(-1px); }
 .admin-auth-card .auth-theme-toggle {
   width: 40px; height: 40px; min-width: 40px;
   color: var(--text-dark); background: var(--surface-2); border: 1px solid var(--line); box-shadow: var(--shadow-sm);
@@ -2862,7 +2856,7 @@ body.admin-b .sidebar-nav button:hover::after {
   }
 }
 /* ════════════════════════════════════════════════════════════════════
-   Teacher Console Mobile (TCM) — bottom tab bar for ≤720px.
+   Teacher Console Mobile (TCM) — bottom tab bar for ≤768px.
    Tabs map 1:1 to the desktop sidebar sections; the existing
    `switchSection()` JS handles activation. Detail / Sign overlays stay
    for the per-leave Approve flow.
@@ -3049,6 +3043,394 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
 .tcm-tabbtn-wrap { position: relative; display: flex; }
 .tcm-tabbtn-wrap > .tcm-tabbtn { flex: 1; }
 @keyframes tcmTabIconIn { from { opacity: .5; transform: translateY(3px) scale(.88); } to { opacity: 1; transform: translateY(0) scale(1); } }
+/* Mobile admin: compact, flat, task-first layout based on Carbon's 4px grid. */
+@media(max-width:768px) {
+  body.admin-b,
+  body.admin-b * {
+    letter-spacing: 0;
+  }
+  body.admin-b.tcm-active .main {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+  body.admin-b .topbar {
+    min-height: 56px;
+    padding: 6px 12px;
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  body.admin-b .topbar-kicker {
+    display: none;
+  }
+  body.admin-b .topbar h1 {
+    font-size: 1.08rem;
+    font-weight: 650;
+  }
+  body.admin-b .topbar-actions {
+    margin-left: 8px;
+  }
+  body.admin-b .mobile-theme-toggle,
+  body.admin-b .theme-toggle {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+    border-radius: 4px;
+    box-shadow: none;
+  }
+  body.admin-b .content {
+    padding: 12px 12px calc(84px + env(safe-area-inset-bottom));
+  }
+  body.admin-b .mobile-dashboard {
+    gap: 12px;
+  }
+  body.admin-b .mobile-dash-overview {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 48px;
+    padding: 2px 2px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  body.admin-b .mobile-dash-overview div {
+    min-width: 0;
+  }
+  body.admin-b .mobile-dash-overview span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  body.admin-b .mobile-dash-overview strong {
+    display: block;
+    margin-top: 2px;
+    color: var(--text-dark);
+    font-size: 1rem;
+    font-weight: 650;
+  }
+  body.admin-b .mobile-dash-overview p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    line-height: 1.35;
+    text-align: right;
+  }
+  body.admin-b .mobile-dash-alert {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--warning);
+    border-radius: 4px;
+    background: var(--surface);
+    box-shadow: none;
+  }
+  body.admin-b .mobile-dash-alert.is-clear {
+    border-left-color: var(--success);
+  }
+  body.admin-b .mobile-dash-alert h3 {
+    font-size: 0.98rem;
+    font-weight: 650;
+  }
+  body.admin-b .mobile-dash-alert p {
+    margin-top: 4px;
+    font-size: 0.78rem;
+    font-weight: 400;
+  }
+  body.admin-b .mobile-dash-btn {
+    min-width: 76px;
+    min-height: 48px;
+    padding: 0 14px;
+    border-radius: 4px;
+    font-size: 0.84rem;
+    font-weight: 600;
+  }
+  body.admin-b .mobile-dash-stat-grid {
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--surface);
+  }
+  body.admin-b .mobile-dash-stat {
+    min-height: 78px;
+    padding: 11px 8px;
+    border: 0;
+    border-right: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  body.admin-b .mobile-dash-stat:last-child {
+    border-right: 0;
+  }
+  body.admin-b .mobile-dash-stat span {
+    font-size: 0.64rem;
+    font-weight: 600;
+    text-transform: none;
+    white-space: nowrap;
+  }
+  body.admin-b .mobile-dash-stat strong {
+    margin-top: 6px;
+    font-size: 1.65rem;
+    font-weight: 600;
+  }
+  body.admin-b .mobile-dash-stat small {
+    display: none;
+  }
+  body.admin-b .mobile-glass-card,
+  body.admin-b .mobile-admin-hero,
+  body.admin-b .mobile-admin-stat-card,
+  body.admin-b .mobile-admin-bar-card,
+  body.admin-b .mobile-settings-profile,
+  body.admin-b .mobile-settings-list,
+  body.admin-b .mobile-admin-record-card,
+  body.admin-b .mobile-recon-card,
+  body.admin-b .tcm-card,
+  body.admin-b .tcm-stat,
+  body.admin-b .tcm-detail-hero,
+  body.admin-b .tcm-kv,
+  body.admin-b .tcm-section,
+  body.admin-b .tcm-ring-card,
+  body.admin-b .tcm-group,
+  body.admin-b .tcm-notify-card,
+  body.admin-b .tcm-me-card,
+  body.admin-b .tcm-me-list {
+    border-radius: 4px;
+    background: var(--surface);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  body.admin-b .mobile-dash-section {
+    padding: 0;
+    overflow: hidden;
+  }
+  body.admin-b .mobile-dash-section-head {
+    min-height: 48px;
+    margin: 0;
+    padding: 10px 14px;
+  }
+  body.admin-b .mobile-dash-section-head h3 {
+    font-size: 0.96rem;
+    font-weight: 650;
+  }
+  body.admin-b .mobile-dash-section-head span {
+    font-size: 0.72rem;
+    font-weight: 400;
+  }
+  body.admin-b .mobile-dash-quick-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  body.admin-b .mobile-dash-action {
+    min-height: 56px;
+    align-content: center;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  body.admin-b .mobile-dash-action:last-child {
+    border-bottom: 0;
+  }
+  body.admin-b .mobile-dash-action strong {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  body.admin-b .mobile-dash-action span {
+    font-size: 0.74rem;
+    font-weight: 400;
+  }
+  body.admin-b .mobile-dash-list {
+    gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  body.admin-b .mobile-dash-item {
+    min-height: 64px;
+    padding: 10px 14px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+  }
+  body.admin-b .mobile-dash-item:last-child {
+    border-bottom: 0;
+  }
+  body.admin-b .mobile-dash-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    font-weight: 650;
+  }
+  body.admin-b .mobile-dash-item-main strong {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  body.admin-b .mobile-dash-item-main span {
+    margin-top: 2px;
+    font-size: 0.73rem;
+    font-weight: 400;
+  }
+  body.admin-b .mobile-dash-chip,
+  body.admin-b .tcm-badge {
+    font-weight: 600;
+  }
+  body.admin-b .card,
+  body.admin-b .operations-hero,
+  body.admin-b .mobile-settings-panel-bar,
+  body.admin-b .settings-side {
+    border-radius: 8px;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  body.admin-b .card {
+    margin-bottom: 12px;
+  }
+  body.admin-b .card-header,
+  body.admin-b.tcm-active #sec-leaves .card-header,
+  body.admin-b.tcm-active #sec-logs .card-header {
+    gap: 10px;
+    padding: 14px;
+  }
+  body.admin-b .card-body {
+    padding: 14px;
+  }
+  body.admin-b #sec-operations .operations-hero {
+    padding: 16px;
+    border-radius: 8px;
+  }
+  body.admin-b #sec-operations .operations-hero h2 {
+    font-size: 1.45rem;
+  }
+  body.admin-b .form-control,
+  body.admin-b select,
+  body.admin-b input,
+  body.admin-b textarea,
+  body.admin-b .btn {
+    min-height: 44px;
+    border-radius: 4px;
+  }
+  body.admin-b .mobile-admin-card-list,
+  body.admin-b .mobile-recon-card-list {
+    gap: 8px;
+  }
+  body.admin-b .mobile-admin-record-card,
+  body.admin-b .mobile-recon-card {
+    padding: 12px;
+  }
+  body.admin-b .mobile-admin-record-actions,
+  body.admin-b .mobile-recon-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  body.admin-b .mobile-admin-record-actions .btn,
+  body.admin-b .mobile-recon-actions .btn {
+    width: 100%;
+  }
+  body.admin-b .mobile-admin-hero,
+  body.admin-b .mobile-settings-profile {
+    padding: 16px;
+  }
+  body.admin-b .mobile-admin-stat-grid {
+    gap: 8px;
+  }
+  body.admin-b .mobile-admin-stat-card {
+    min-height: 88px;
+    padding: 12px;
+  }
+  body.admin-b .mobile-admin-stat-card strong {
+    font-size: 1.75rem;
+    font-weight: 600;
+  }
+  body.admin-b .settings-side {
+    gap: 0;
+    padding: 0;
+    border: 1px solid var(--line);
+    background: var(--surface);
+  }
+  body.admin-b .settings-nav-btn {
+    min-height: 48px;
+    padding: 10px 14px;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+  }
+  body.admin-b .settings-nav-btn.active {
+    border-bottom-color: var(--accent);
+  }
+  body.admin-b .mobile-settings-row {
+    min-height: 56px;
+    border-radius: 0;
+  }
+  body.admin-b .tcm-screen[data-tcm-active] {
+    padding: 8px 12px max(84px, calc(72px + env(safe-area-inset-bottom)));
+  }
+  body.admin-b .tcm-header {
+    min-height: 56px;
+    padding: 8px 12px;
+  }
+  body.admin-b .tcm-list {
+    gap: 8px;
+    padding: 0 12px;
+  }
+  body.admin-b .tcm-card {
+    min-height: 48px;
+    padding: 12px;
+  }
+  body.admin-b .tcm-card-foot .tcm-mini-btn,
+  body.admin-b .tcm-detail-actions .tcm-bigbtn,
+  body.admin-b .tcm-sign-actions button {
+    min-height: 48px;
+    border-radius: 4px;
+  }
+  body.admin-b .tcm-sign-sheet {
+    border-radius: 8px 8px 0 0;
+  }
+  body.admin-b .tcm-tabbar {
+    min-height: 64px;
+    padding: 2px 0 calc(2px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  body.admin-b .tcm-tabbtn {
+    position: relative;
+    min-width: 0;
+    min-height: 60px;
+    gap: 2px;
+    padding: 6px 2px 4px;
+  }
+  body.admin-b .tcm-tabbtn svg {
+    width: 20px;
+    height: 20px;
+  }
+  body.admin-b .tcm-tabbtn .lbl {
+    max-width: 100%;
+    overflow: hidden;
+    color: inherit;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  body.admin-b .tcm-tabbtn.active::before {
+    position: absolute;
+    top: -3px;
+    left: 18%;
+    right: 18%;
+    height: 2px;
+    background: currentColor;
+    content: '';
+  }
+}
 body.admin-auth-locked { overflow: hidden; }
 body.admin-auth-locked > .hamburger,
 body.admin-auth-locked > .sidebar-overlay,
@@ -3070,7 +3452,7 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
     transition-duration: 1ms !important;
   }
 }
-/* The legacy ≤720px display:none rule was removed — the mobile shell now
+/* The legacy ≤768px display:none rule was removed — the mobile shell now
    surfaces the desktop sections inside .main, gated by body.tcm-active. */
 </style>
 </head>
@@ -3081,7 +3463,6 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
     <div class="admin-auth-head">
       <div class="auth-kicker" data-admin-i18n="brand">IBSH Leave Portal</div>
       <div class="admin-auth-head-actions">
-        <button class="admin-language-toggle" type="button" onclick="toggleAdminLanguage()" aria-label="Switch language">中文</button>
         <button class="theme-toggle auth-theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle light or dark mode" title="Toggle theme">
           <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -3152,7 +3533,6 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
       <h1 id="topbarTitle">Dashboard</h1>
     </div>
     <div class="topbar-actions">
-      <button class="admin-language-toggle" type="button" onclick="toggleAdminLanguage()" aria-label="Switch language">中文</button>
       <button class="theme-toggle mobile-theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle light or dark mode" title="Toggle theme">
         <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -3895,8 +4275,6 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
 /* ═══════════════════════════════════════════════════════════════════
    IBSH Admin – Main Script
    ═══════════════════════════════════════════════════════════════════ */
-const ADMIN_LANGUAGE_STORAGE_KEY = 'ibsh_admin_language';
-let ADMIN_LANGUAGE = 'en';
 const ADMIN_I18N = {
   en: {
     brand: 'IBSH Leave Portal',
@@ -3928,77 +4306,36 @@ const ADMIN_I18N = {
     'grade.resume': 'Resume grade advancement',
     'common.close': 'Close',
   },
-  zh: {
-    brand: 'IBSH 學生請假系統',
-    'auth.title': '管理後台',
-    'auth.description': '使用 Google 登入以管理假單、出缺勤提醒與學生資料。僅限已授權的教職員帳號。',
-    'auth.approveTitle': '審核假單',
-    'auth.approveText': '查看簽核關卡、簽名與目前流程狀態。',
-    'auth.walkinTitle': '登錄臨時請假',
-    'auth.walkinText': '從出勤作業頁新增電話或辦公室臨時請假紀錄。',
-    'auth.auditTitle': '檢查出缺勤',
-    'auth.auditText': '追蹤遲到、待補假單與班級出勤趨勢。',
-    'auth.continueGoogle': '使用 Google 繼續',
-    'auth.checking': '正在檢查 Firebase 與帳號權限...',
-    'auth.tryAnother': '改用其他帳號',
-    'auth.signOut': '登出',
-    'nav.dashboard': '總覽',
-    'nav.operations': '出勤作業',
-    'nav.leaves': '假單管理',
-    'nav.logs': '活動紀錄',
-    'nav.stats': '統計',
-    'nav.settings': '設定',
-    'grade.title': '學年度／年級調整',
-    'grade.description': '開始新學年度前，請先確認學生名冊的變更內容。',
-    'grade.advance': '升級',
-    'grade.graduate': '畢業移除',
-    'grade.unchanged': '不變更',
-    'grade.confirm': '我已確認人數，並了解十二年級畢業生將從學生名冊移除。',
-    'grade.apply': '套用年級升級',
-    'grade.resume': '繼續未完成的年級升級',
-    'common.close': '關閉',
-  },
 };
 function adminText(key) {
-  const table = ADMIN_I18N[ADMIN_LANGUAGE] || ADMIN_I18N.en;
+  const table = ADMIN_I18N.en;
   return table[key] || ADMIN_I18N.en[key] || key;
 }
-function applyAdminLanguage(language) {
-  ADMIN_LANGUAGE = language === 'zh' ? 'zh' : 'en';
-  document.documentElement.lang = ADMIN_LANGUAGE === 'zh' ? 'zh-Hant' : 'en';
+function applyAdminLanguage() {
+  document.documentElement.lang = 'en';
   document.querySelectorAll('[data-admin-i18n]').forEach(element => {
     element.textContent = adminText(element.dataset.adminI18n);
-  });
-  document.querySelectorAll('.admin-language-toggle').forEach(button => {
-    button.textContent = ADMIN_LANGUAGE === 'en' ? '中文' : 'EN';
-    button.setAttribute('aria-label', ADMIN_LANGUAGE === 'en' ? '切換為中文' : 'Switch to English');
-    button.setAttribute('title', button.getAttribute('aria-label'));
   });
   document.querySelectorAll('.sidebar-nav button[data-section]').forEach(button => {
     const label = adminText('nav.' + button.dataset.section);
     button.setAttribute('aria-label', label);
     button.setAttribute('title', label);
   });
+  const mobileLabels = { dashboard: 'Home', leaves: 'Approvals', logs: 'Activity', stats: 'Stats', settings: 'Settings' };
   document.querySelectorAll('.tcm-tabbtn[data-tcm-tab]').forEach(button => {
     const label = adminText('nav.' + button.dataset.tcmTab);
     const labelElement = button.querySelector('.lbl');
-    if (labelElement) labelElement.textContent = label;
+    if (labelElement) labelElement.textContent = mobileLabels[button.dataset.tcmTab] || label;
     button.setAttribute('aria-label', label);
   });
   const activeSection = document.querySelector('.section.active');
   const currentName = activeSection && activeSection.id ? activeSection.id.replace(/^sec-/, '') : 'dashboard';
   const title = document.getElementById('topbarTitle');
   if (title) title.textContent = adminText('nav.' + currentName);
-  document.title = ADMIN_LANGUAGE === 'zh' ? 'IBSH 出勤管理後台' : 'IBSH Attendance - Admin';
+  document.title = 'IBSH Attendance - Admin';
 }
 function initAdminLanguage() {
-  const saved = localStorage.getItem(ADMIN_LANGUAGE_STORAGE_KEY);
-  applyAdminLanguage(saved === 'zh' ? 'zh' : 'en');
-}
-function toggleAdminLanguage() {
-  const next = ADMIN_LANGUAGE === 'en' ? 'zh' : 'en';
-  localStorage.setItem(ADMIN_LANGUAGE_STORAGE_KEY, next);
-  applyAdminLanguage(next);
+  applyAdminLanguage();
 }
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
@@ -4623,23 +4960,13 @@ function renderMobileDashboard(options = {}) {
     </button>
   `).join('');
   container.innerHTML = `
-    <section class="mobile-glass-card mobile-dash-hero">
+    <section class="mobile-dash-overview" aria-label="Dashboard scope">
       <div>
-        <div class="mobile-admin-kicker">IBSH Leave Portal</div>
-        <div class="mobile-dash-title">Today dashboard</div>
-        <div class="mobile-dash-summary">${escapeHtml(roleLabel)} · leave management and attendance alerts.</div>
+        <span>Today</span>
+        <strong>${escapeHtml(d)}</strong>
       </div>
-      <div class="mobile-dash-meta">
-        <span>${escapeHtml(d)}</span>
-        <span>${escapeHtml(visibleStudents.length)} students</span>
-      </div>
+      <p>${escapeHtml(roleLabel)} · ${escapeHtml(visibleStudents.length)} students</p>
     </section>
-    <div class="mobile-dash-stat-grid">
-      <div class="mobile-dash-stat"><span>Pending</span><strong>${visiblePendingLeaves.length}</strong><small>Workflow items</small></div>
-      <div class="mobile-dash-stat"><span>Tardies</span><strong>${todayTardies.length}</strong><small>Today</small></div>
-      <div class="mobile-dash-stat"><span>Leaves</span><strong>${visibleDashLeaves.length}</strong><small>Today records</small></div>
-      ${showAdminOps ? `<div class="mobile-dash-stat"><span>Make-up</span><strong>${makeUpLeaves.length}</strong><small>Need follow-up</small></div>` : ''}
-    </div>
     <section class="mobile-dash-alert${primaryAction.clear ? ' is-clear' : ''}">
       <div>
         <h3>${escapeHtml(primaryAction.title)}</h3>
@@ -4647,10 +4974,16 @@ function renderMobileDashboard(options = {}) {
       </div>
       <button type="button" class="mobile-dash-btn" onclick="${primaryAction.action}">${escapeHtml(primaryAction.cta)}</button>
     </section>
+    <div class="mobile-dash-stat-grid">
+      <div class="mobile-dash-stat"><span>Pending</span><strong>${visiblePendingLeaves.length}</strong><small>Workflow items</small></div>
+      <div class="mobile-dash-stat"><span>Tardies</span><strong>${todayTardies.length}</strong><small>Today</small></div>
+      <div class="mobile-dash-stat"><span>Leaves</span><strong>${visibleDashLeaves.length}</strong><small>Today records</small></div>
+      ${showAdminOps ? `<div class="mobile-dash-stat"><span>Make-up</span><strong>${makeUpLeaves.length}</strong><small>Need follow-up</small></div>` : ''}
+    </div>
     <section class="mobile-glass-card mobile-dash-section">
       <div class="mobile-dash-section-head">
         <h3>Quick actions</h3>
-        <span>Open dedicated views</span>
+        <span>${quickActions.length} available</span>
       </div>
       <div class="mobile-dash-quick-grid">
         ${quickActions.map(action => `
@@ -6427,13 +6760,13 @@ function gradePlanSummaryLines(plan) {
     lines.push(`<div><strong>Unchanged:</strong> ${escapeHtml(classes.join(', '))}${plan.unchanged.length > 8 ? ', …' : ''}</div>`);
   }
   if (plan.resume) {
-    const label = ADMIN_LANGUAGE === 'zh' ? '偵測到未完成作業，將從上次進度繼續：' : 'An unfinished operation will resume from: ';
+    const label = 'An unfinished operation will resume from: ';
     lines.unshift(`<div class="grade-resume-note"><strong>${escapeHtml(label)}</strong>${Number(plan.completed || 0)} / ${Number(plan.total || 0)}</div>`);
   }
-  const limit = Number(AppDB.GRADE_ADVANCE_MAX_STUDENTS || 600);
+  const limit = Number(AppDB.GRADE_ADVANCE_MAX_STUDENTS || 1000);
   const total = plan.updates.length + plan.removals.length;
   if (total > limit) {
-    lines.unshift(`<div class="grade-resume-note"><strong>${ADMIN_LANGUAGE === 'zh' ? '無法執行：' : 'Cannot continue: '}</strong>${total} / ${limit}</div>`);
+    lines.unshift(`<div class="grade-resume-note"><strong>Cannot continue: </strong>${total} / ${limit}</div>`);
   }
   return lines.length ? lines : ['<div>No eligible grade records were found.</div>'];
 }
@@ -6459,7 +6792,7 @@ function updateGradeAdvanceButton() {
   if (!button) return;
   const hasChanges = Boolean(GRADE_ADVANCE_PLAN && (GRADE_ADVANCE_PLAN.updates.length || GRADE_ADVANCE_PLAN.removals.length));
   const total = GRADE_ADVANCE_PLAN ? GRADE_ADVANCE_PLAN.updates.length + GRADE_ADVANCE_PLAN.removals.length : 0;
-  const withinLimit = total <= Number(AppDB.GRADE_ADVANCE_MAX_STUDENTS || 600);
+  const withinLimit = total <= Number(AppDB.GRADE_ADVANCE_MAX_STUDENTS || 1000);
   button.disabled = GRADE_ADVANCE_IN_PROGRESS || !hasChanges || !withinLimit || !(confirmation && confirmation.checked);
   if (!GRADE_ADVANCE_IN_PROGRESS) button.textContent = adminText(GRADE_ADVANCE_PLAN && GRADE_ADVANCE_PLAN.resume ? 'grade.resume' : 'grade.apply');
 }
@@ -6473,8 +6806,8 @@ function setGradeAdvanceProgress(completed, total, phase, visible) {
   const safeTotal = Math.max(0, Number(total || 0));
   const safeCompleted = Math.min(safeTotal, Math.max(0, Number(completed || 0)));
   label.textContent = phase === 'public'
-    ? (ADMIN_LANGUAGE === 'zh' ? '正在同步公開學生名冊...' : 'Syncing public student directory...')
-    : (ADMIN_LANGUAGE === 'zh' ? '正在分批更新學生年級...' : 'Updating student grades in batches...');
+    ? 'Syncing public student directory...'
+    : 'Updating student grades in batches...';
   count.textContent = `${safeCompleted} / ${safeTotal}`;
   bar.max = Math.max(1, safeTotal);
   bar.value = safeCompleted;
@@ -6493,7 +6826,7 @@ async function advanceGrades() {
   }
   const button = $('#gradeAdvanceButton');
   GRADE_ADVANCE_IN_PROGRESS = true;
-  if (button) button.textContent = ADMIN_LANGUAGE === 'zh' ? '正在更新名冊...' : 'Updating roster...';
+  if (button) button.textContent = 'Updating roster...';
   updateGradeAdvanceButton();
   try {
     if (typeof AppDB.advanceStudentGrades !== 'function') {
@@ -6505,8 +6838,8 @@ async function advanceGrades() {
     }, progress => {
       setGradeAdvanceProgress(progress.completed, progress.total, progress.phase, true);
       if (button) button.textContent = progress.phase === 'public'
-        ? (ADMIN_LANGUAGE === 'zh' ? '正在同步名冊...' : 'Syncing directory...')
-        : `${ADMIN_LANGUAGE === 'zh' ? '正在更新' : 'Updating'} ${progress.completed} / ${progress.total}`;
+        ? 'Syncing directory...'
+        : `Updating ${progress.completed} / ${progress.total}`;
     });
     toast(`Grade advancement complete: ${result.advanced} advanced, ${result.graduated} graduated.`);
     if (!result.mirrorSynced) {
@@ -9757,7 +10090,7 @@ window.addEventListener('DOMContentLoaded', () => {
 (function () {
   'use strict';
   const TCM = {
-    breakpoint: 720,
+    breakpoint: 768,
     activeTab: 'dashboard',
     detailLeaveId: null,
     inited: false,
@@ -10367,7 +10700,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     // Back buttons
     document.querySelectorAll('[data-tcm-back]').forEach(b => {
-      b.addEventListener('click', () => setTab('inbox'));
+      b.addEventListener('click', () => setTab('leaves'));
     });
     // List delegation (inbox/today/notify cards → open detail)
     document.getElementById('tcmApp').addEventListener('click', (e) => {
@@ -10464,20 +10797,20 @@ window.addEventListener('DOMContentLoaded', () => {
   <div class="tcm-tabbtn-wrap">
     <button class="tcm-tabbtn active" type="button" role="tab" aria-selected="true" aria-controls="sec-dashboard" data-tcm-tab="dashboard">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="8" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/></svg>
-      <span class="lbl">Dashboard</span>
+      <span class="lbl">Home</span>
     </button>
   </div>
   <div class="tcm-tabbtn-wrap">
     <button class="tcm-tabbtn" type="button" role="tab" aria-selected="false" aria-controls="sec-leaves" tabindex="-1" data-tcm-tab="leaves">
       <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg>
-      <span class="lbl">Leaves</span>
+      <span class="lbl">Approvals</span>
       <span class="badge" id="tcmInboxBadge" hidden>0</span>
     </button>
   </div>
   <div class="tcm-tabbtn-wrap">
     <button class="tcm-tabbtn" type="button" role="tab" aria-selected="false" aria-controls="sec-logs" tabindex="-1" data-tcm-tab="logs">
       <svg viewBox="0 0 24 24"><path d="M3 5h18"/><path d="M3 12h18"/><path d="M3 19h18"/><circle cx="7" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="17" cy="19" r="1.5"/></svg>
-      <span class="lbl">Logs</span>
+      <span class="lbl">Activity</span>
     </button>
   </div>
   <div class="tcm-tabbtn-wrap">

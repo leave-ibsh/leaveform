@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="portal-build" content="index-inline-makeup-2026-07-17-v2">
     <title>IBSH Student Leave Form</title>
     <link rel="icon" href="data:,">
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js?v=20260706-notify3"></script>
-    <script src="shared-db.js?v=20260714-grade600"></script>
+    <script src="shared-db.js?v=20260717-grade1000"></script>
     <script src="signature-dialog.js?v=20260706-notify3"></script>
     <script src="notification-service.js?v=20260706-notify3"></script>
-    <script src="makeup-service.js?v=20260717-1"></script>
     <style>
         /* ========================================================
            Nordic Minimalist Light Theme with Soft Green Elements
@@ -2198,7 +2198,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="portal-ui.css?v=20260713-motion1">
+    <link rel="stylesheet" href="portal-ui.css?v=20260717-inline-makeup1">
 </head>
 <body data-mscreen="login">
     <!-- ═══ Mobile iOS Shell (≤640px only — desktop is unaffected) ═══ -->
@@ -2344,7 +2344,6 @@
         <nav class="portal-bottom-nav" aria-label="Mobile navigation">
             <button type="button" class="is-active" data-mobile-nav="home" onclick="mGoOverview()"><span>⌂</span><small>Home</small></button>
             <button type="button" class="portal-bottom-primary" data-mobile-nav="apply" onclick="mGoApply()"><span>＋</span><small>New leave</small></button>
-            <button type="button" data-mobile-nav="makeup" onclick="openMakeupPortal()"><span>↻</span><small>Make-up</small></button>
             <button type="button" data-mobile-nav="records" onclick="mGoRecords()"><span>▤</span><small>Records</small></button>
             <button type="button" data-mobile-nav="progress" onclick="mGoProgress()"><span>○</span><small>Progress</small></button>
         </nav>
@@ -2433,7 +2432,6 @@
             <nav class="desktop-sidebar-nav">
                 <button type="button" class="desktop-nav-button is-active" data-desktop-view="dashboard" onclick="navigateDesktopPortal('desktopParentHome', this)"><span aria-hidden="true">⌂</span>Dashboard</button>
                 <button type="button" class="desktop-nav-button" data-desktop-view="new-leave" onclick="navigateDesktopPortal('desktopNewLeaveView', this)"><span aria-hidden="true">＋</span>New Leave Request</button>
-                <button type="button" class="desktop-nav-button" data-desktop-view="makeup" onclick="openMakeupPortal()"><span aria-hidden="true">↻</span>Make-up Leave</button>
                 <button type="button" class="desktop-nav-button" data-desktop-view="requests" onclick="navigateDesktopPortal('desktopRequestsView', this)"><span aria-hidden="true">▤</span>My Requests</button>
                 <button type="button" class="desktop-nav-button" data-desktop-view="calendar" onclick="navigateDesktopPortal('desktopCalendarView', this)"><span aria-hidden="true">▦</span>Calendar</button>
             </nav>
@@ -2589,7 +2587,7 @@
                             <button type="button" class="ld-tab tab-pending active" data-tab="pending" onclick="switchDashboardTab('pending')">
                                 ⏳ Pending Approval <span class="ld-tab-count" id="ldCountPending">0</span>
                             </button>
-                            <button type="button" class="ld-tab tab-overdue" data-tab="overdue" onclick="openMakeupPortal()">
+                            <button type="button" class="ld-tab tab-overdue" data-tab="overdue" onclick="switchDashboardTab('overdue')">
                                 ⚠️ Make-up Form <span class="ld-tab-count" id="ldCountOverdue">0</span>
                             </button>
                             <button type="button" class="ld-tab tab-upcoming" data-tab="upcoming" onclick="switchDashboardTab('upcoming')">
@@ -3167,7 +3165,7 @@
                 ? range.from + ' to ' + range.to
                 : (range.from || 'the selected date');
             if (isWalkinLeave(rec) && isTruancyFromMissingMakeup(rec, AppDB.getLeavesByStudentNo(rec.studentNo || ''))) {
-                return 'This date overlaps a walk-in leave from ' + dateText + '. The 3-day window to reach homeroom review has passed. Please use the parent signature and paper form process.';
+                return 'This date overlaps a walk-in leave from ' + dateText + '. The 3-day online window has passed. Print the paper form and have the parent sign the printed copy by hand.';
             }
             return 'This date/time overlaps an existing ' + conflictStatusLabel(rec) + ' from ' + dateText + '. Please review Records or choose another date/time.';
         }
@@ -3999,7 +3997,7 @@
             ]);
         }
         const MAKEUP_APPLICATION_GRACE_DAYS = 3;
-        const MAKEUP_PAPER_INSTRUCTION = 'The 3-day window to reach homeroom review has passed. Parent must sign, print the paper form, get the homeroom teacher signature, and submit it to the Discipline Office.';
+        const MAKEUP_PAPER_INSTRUCTION = 'The 3-day online make-up window has passed. Online submission and online parent signing are closed. Print the paper form, have a parent sign the printed copy by hand, obtain the homeroom teacher signature, and submit it to the Discipline Office.';
         function daysSinceLeaveEnd(rec) {
             const end = rec && (rec.toDate || rec.fromDate || '');
             if (!end) return 0;
@@ -4023,18 +4021,7 @@
             const id = encodeURIComponent(String(rec && rec.id || ''));
             if (!id) return '#';
             const state = String(parentSignState || '').trim();
-            const page = isMakeupApprovalRequest(rec) ? 'makeup-form.html' : 'leave-form.html';
-            return page + '?id=' + id + (state ? '&parentSigned=' + encodeURIComponent(state) : '');
-        }
-        function makeupCaseUrl(rec) {
-            const caseId = isWalkinLeave(rec)
-                ? String(rec && rec.id || '')
-                : String(rec && rec.reconciliationSourceId || '');
-            return caseId ? 'makeup.html?case=' + encodeURIComponent(caseId) : 'makeup.html';
-        }
-        function openMakeupPortal(caseId) {
-            const id = String(caseId || '').trim();
-            window.location.href = id ? 'makeup.html?case=' + encodeURIComponent(id) : 'makeup.html';
+            return 'leave-form.html?id=' + id + '&paper=1' + (state ? '&parentSigned=' + encodeURIComponent(state) : '');
         }
         function findRelatedMakeupLeave(walkinLeave, allLeaves) {
             if (!walkinLeave) return null;
@@ -4097,6 +4084,19 @@
             const related = findRelatedMakeupLeave(walkinLeave, allLeaves);
             return !hasReachedHomeroomReview(related) && daysSinceLeaveEnd(walkinLeave) > MAKEUP_APPLICATION_GRACE_DAYS;
         }
+        function makeupWalkinSource(rec, allLeaves) {
+            if (!rec) return null;
+            if (isWalkinLeave(rec)) return rec;
+            const sourceId = String(rec.reconciliationSourceId || '').trim();
+            if (!sourceId) return null;
+            const leaves = Array.isArray(allLeaves) ? allLeaves : [];
+            return leaves.find(item => String(item && item.id || '') === sourceId && isWalkinLeave(item)) || null;
+        }
+        function requiresPaperMakeup(rec, allLeaves) {
+            const leaves = Array.isArray(allLeaves) ? allLeaves : [];
+            const source = makeupWalkinSource(rec, leaves);
+            return !!source && isTruancyFromMissingMakeup(source, leaves);
+        }
         function escapeJsString(value) {
             return String(value || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
         }
@@ -4109,19 +4109,28 @@
             return '<div class="' + (className || 'ld-card-note') + '">' + escapeHtml(MAKEUP_PAPER_INSTRUCTION) + '</div>';
         }
         function makeupPaperActionHtml(rec, mobile) {
-            const url = makeupCaseUrl(rec);
+            const id = encodeURIComponent(String(rec && rec.id || ''));
             return mobile
-                ? '<button type="button" class="m-leave-detail-btn" onclick="window.location.href=\'' + url + '\'">Open make-up case</button>'
-                : '<a href="' + url + '">Open make-up case</a>';
+                ? '<button type="button" class="m-leave-detail-btn" onclick="window.location.href=\'leave-form.html?id=' + id + '&paper=1\'">Open paper form</button>'
+                : '<a href="leave-form.html?id=' + id + '&paper=1" target="_blank" rel="noopener">Open paper form</a>';
         }
         function makeupParentSignActionHtml(rec, mobile) {
-            if (!rec || !isMakeupApprovalRequest(rec)) return '';
-            const url = makeupCaseUrl(rec);
-            return '<button type="button" class="' + (mobile ? 'm-leave-action-btn m-leave-approve' : 'approve-btn') + '" onclick="window.location.href=\'' + url + '\'">Open make-up case</button>';
+            if (AUTH_MODE !== 'parent' || !rec || !isMakeupApprovalRequest(rec)) return '';
+            if (!isLeaveAtParentStage(rec) && !hasParentApproval(rec)) return '';
+            const jsId = escapeJsString(rec.id || '');
+            return '<button type="button" class="' + (mobile ? 'm-leave-action-btn m-leave-approve' : 'approve-btn') + '" onclick="parentSignMakeupLeave(\'' + jsId + '\')">Parent sign</button>';
         }
         function makeupOnlineActionHtml(rec, relatedLeave, mobile) {
-            const url = makeupCaseUrl(rec || relatedLeave);
-            return '<button type="button" class="' + (mobile ? 'm-leave-action-btn m-leave-approve' : 'approve-btn') + '" onclick="window.location.href=\'' + url + '\'">Open make-up case</button>';
+            if (relatedLeave && !hasReachedHomeroomReview(relatedLeave)) {
+                const relatedId = encodeURIComponent(String(relatedLeave.id || ''));
+                const approve = makeupParentSignActionHtml(relatedLeave, mobile);
+                if (AUTH_MODE === 'parent' && approve) return approve;
+                return mobile
+                    ? '<button type="button" class="m-leave-detail-btn" onclick="window.location.href=\'leave-form.html?id=' + relatedId + '\'">View pending form</button>'
+                    : '<a href="leave-form.html?id=' + relatedId + '" target="_blank" rel="noopener">View pending form</a>';
+            }
+            const jsId = escapeJsString(rec && rec.id || '');
+            return '<button type="button" class="' + (mobile ? 'm-leave-action-btn m-leave-approve' : 'approve-btn') + '" onclick="startReconciliationLeave(\'' + jsId + '\')">Open online make-up form</button>';
         }
         function makeupFollowupInstructionText(rec, relatedLeave) {
             if (relatedLeave && !hasReachedHomeroomReview(relatedLeave)) {
@@ -4132,11 +4141,6 @@
         function getMakeupRequests(student) {
             if (!student || typeof AppDB === 'undefined' || typeof AppDB.getLeavesByStudentNo !== 'function') return [];
             const leaves = AppDB.getLeavesByStudentNo(student.studentNo || student.studentId || '');
-            if (window.MakeupService) {
-                return window.MakeupService.casesForStudent(student, leaves)
-                    .filter(item => item.meta.group === 'action')
-                    .map(item => item.walkin);
-            }
             return leaves
                 .filter(rec => needsMakeupReminder(rec, leaves))
                 .sort((a, b) => String(b.fromDate || '').localeCompare(String(a.fromDate || '')));
@@ -4190,10 +4194,23 @@
             return false;
         }
         function refreshMakeupReminder() {}
-        function openMakeupReminder() { openMakeupPortal(); }
+        function openMakeupReminder() {}
         function closeMakeupReminder() {}
         async function beginMakeupFromReminder(leaveId) {
-            openMakeupPortal(leaveId);
+            const leaves = CURRENT_STUDENT && typeof AppDB !== 'undefined' && typeof AppDB.getLeavesByStudentNo === 'function'
+                ? AppDB.getLeavesByStudentNo(CURRENT_STUDENT.studentNo || CURRENT_STUDENT.studentId || '')
+                : [];
+            const rec = leaves.find(item => String(item && item.id || '') === String(leaveId || ''));
+            if (!rec) {
+                toast('Make-up form record not found.', 'error');
+                return;
+            }
+            if (isTruancyFromMissingMakeup(rec, leaves)) {
+                window.location.href = 'leave-form.html?id=' + encodeURIComponent(rec.id || '') + '&paper=1';
+                return;
+            }
+            if (mIsMobile()) mSetScreen('apply');
+            await startReconciliationLeave(leaveId);
         }
         function currentWorkflow() {
             const settings = (AppDB && AppDB.getSettings) ? AppDB.getSettings() : {};
@@ -4447,7 +4464,42 @@
             </div>`;
         }
         async function startReconciliationLeave(leaveId) {
-            openMakeupPortal(leaveId);
+            const rec = AppDB.leave().find(l => l.id === leaveId);
+            if (!rec) {
+                toast('Make-up form record not found.', 'error');
+                return;
+            }
+            if (isOfficialLeave(rec)) {
+                toast('Official leave make-up forms are confirmed by the office with the paper form.', 'error');
+                return;
+            }
+            const studentLeaves = AppDB.getLeavesByStudentNo(rec.studentNo || '');
+            if (isTruancyFromMissingMakeup(rec, studentLeaves)) {
+                toast(MAKEUP_PAPER_INSTRUCTION, 'error');
+                window.location.href = 'leave-form.html?id=' + encodeURIComponent(rec.id || '') + '&paper=1';
+                return;
+            }
+            const type = leaveTypeKey(rec);
+            const radio = document.querySelector('input[name="leaveReason"][value="' + type + '"]');
+            if (!radio) {
+                toast('This leave type cannot be submitted online. Please contact the Discipline Office.', 'error');
+                return;
+            }
+            CURRENT_RECONCILIATION_SOURCE_ID = rec.id || '';
+            radio.checked = true;
+            document.getElementById('fromDate').value = rec.fromDate || '';
+            document.getElementById('toDate').value = rec.toDate || rec.fromDate || '';
+            const fullDay = !!rec.fullDay || ((rec.fromTime || '') === '08:10' && (rec.toTime || '') === '16:10');
+            document.getElementById('fullDay').checked = fullDay;
+            onFullDayChange();
+            document.getElementById('fromTime').value = rec.fromTime || '08:10';
+            document.getElementById('toTime').value = rec.toTime || '16:10';
+            document.getElementById('parentNote').value = rec.parentNote || rec.reason || '';
+            await calculatePeriods();
+            if (!mIsMobile() && AUTH_MODE === 'parent') openDesktopNewLeave();
+            const form = document.getElementById('leaveForm');
+            if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            toast('Make-up form time loaded. Please review, sign, and submit.');
         }
         function renderEmpty(msg) {
             return `<div class="ld-empty">${escapeHtml(msg)}</div>`;
@@ -4455,11 +4507,13 @@
         function renderLeaveDashboard(student) {
             if (!student || typeof AppDB === 'undefined' || typeof AppDB.getLeavesByStudentNo !== 'function') return;
             const all = AppDB.getLeavesByStudentNo(student.studentNo).slice();
-            const makeupCases = window.MakeupService ? window.MakeupService.casesForStudent(student, all) : [];
             const today = todayStr();
             const buckets = { pending: [], overdue: [], upcoming: [], history: [] };
             all.forEach(rec => {
-                if (isWalkinLeave(rec) || String(rec.reconciliationSourceId || '').trim()) return;
+                if (isReconciliationRequest(rec)) {
+                    buckets.overdue.push(rec);
+                    return;
+                }
                 categorizeLeave(rec, today).forEach(c => buckets[c].push(rec));
             });
             buckets.pending.sort((a, b) => String(a.fromDate || '').localeCompare(String(b.fromDate || '')));
@@ -4467,7 +4521,7 @@
             buckets.upcoming.sort((a, b) => String(a.fromDate || '').localeCompare(String(b.fromDate || '')));
             buckets.history.sort((a, b) => String(b.fromDate || '').localeCompare(String(a.fromDate || '')));
             document.getElementById('ldCountPending').textContent = buckets.pending.length;
-            document.getElementById('ldCountOverdue').textContent = makeupCases.filter(item => item.state !== 'completed').length;
+            document.getElementById('ldCountOverdue').textContent = buckets.overdue.length;
             document.getElementById('ldCountUpcoming').textContent = buckets.upcoming.length;
             document.getElementById('ldCountHistory').textContent = buckets.history.length;
             // Pending panel — overdue items also appear here, flagged as needing a make-up form.
@@ -4483,9 +4537,27 @@
                 : renderEmpty('No pending approvals');
             // Make-up form panel (Make-up form)
             const overduePanel = document.getElementById('ldPanelOverdue');
-            overduePanel.innerHTML = makeupCases.length
-                ? '<div class="ld-card info"><div class="ld-card-top"><div><div class="ld-card-date">Dedicated make-up leave page</div><span class="ld-card-type">' + makeupCases.length + ' case' + (makeupCases.length === 1 ? '' : 's') + '</span></div></div><div class="ld-card-meta">Make-up forms, parent signatures, paper instructions, and completed records are managed separately.</div><div class="ld-card-actions"><button type="button" class="approve-btn" onclick="openMakeupPortal()">Open make-up cases</button></div></div>'
-                : renderEmpty('No make-up leave cases');
+            overduePanel.innerHTML = buckets.overdue.length
+                ? '<div class="ld-grid">' + buckets.overdue.map(r => {
+                    const official = isOfficialLeave(r);
+                    const paperRequired = isTruancyFromMissingMakeup(r, all);
+                    const related = findRelatedMakeupLeave(r, all);
+                    const extra = official
+                        ? '<span class="ld-flag reconciling">Office will confirm paper official leave</span>'
+                        : paperRequired
+                        ? makeupPaperActionHtml(r, false)
+                        : makeupOnlineActionHtml(r, related, false);
+                    return renderLeaveCard(r, {
+                        cardClass: official ? 'info' : 'urgent',
+                        truancy: paperRequired,
+                        showReconcilingFlag: !paperRequired,
+                        extraActionsHtml: extra,
+                        noteHtml: official ? '' : (paperRequired ? makeupPaperInstructionHtml('ld-card-note') : '<div class="ld-card-note">' + escapeHtml(makeupFollowupInstructionText(r, related)) + '</div>'),
+                        hideView: true,
+                        hideParentActions: true,
+                    });
+                }).join('') + '</div>'
+                : renderEmpty('No make-up leave forms pending');
             // Upcoming panel — group by leave type
             const upcomingPanel = document.getElementById('ldPanelUpcoming');
             if (!buckets.upcoming.length) {
@@ -4601,6 +4673,12 @@
         async function parentApproveLeave(leaveId, options = {}) {
             const leave = AppDB.leave().find(l => l.id === leaveId);
             if (!leave) return;
+            const studentLeaves = AppDB.getLeavesByStudentNo(leave.studentNo || '');
+            if (isMakeupApprovalRequest(leave) && requiresPaperMakeup(leave, studentLeaves)) {
+                toast(MAKEUP_PAPER_INSTRUCTION, 'error');
+                window.location.href = leavePrintUrl(leave, '');
+                return;
+            }
             const settings = AppDB.getSettings();
             const workflow = settings.approvalWorkflow || [];
             const stage = workflow[leave.currentStageIndex || 0];
@@ -4653,12 +4731,7 @@
             if (updated && updated.status === 'approved') {
                 await autoReconcileWalkinsForApprovedLeave(updated);
             }
-            const paperWalkinApproval = updated && isWalkinLeave(updated)
-                && isTruancyFromMissingMakeup(updated, AppDB.getLeavesByStudentNo(updated.studentNo || ''));
-            if (paperWalkinApproval && !options.redirectToPrint) {
-                toast('Parent signature recorded. Please print the paper form for homeroom signature and Discipline Office submission.', 'info');
-            }
-            if (window.IBSHNotifications && updated && !paperWalkinApproval) {
+            if (window.IBSHNotifications && updated) {
                 const notifyResult = await window.IBSHNotifications.notifyNext(updated);
                 const notifyDiagnosis = typeof window.IBSHNotifications.diagnose === 'function'
                     ? window.IBSHNotifications.diagnose(window.IBSHNotifications.actionForCurrentStage(updated), updated)
@@ -4681,6 +4754,12 @@
             if (!leave) return;
             if (!isMakeupApprovalRequest(leave)) {
                 await parentApproveLeave(leaveId);
+                return;
+            }
+            const studentLeaves = AppDB.getLeavesByStudentNo(leave.studentNo || '');
+            if (requiresPaperMakeup(leave, studentLeaves)) {
+                toast(MAKEUP_PAPER_INSTRUCTION, 'error');
+                window.location.href = leavePrintUrl(leave, '');
                 return;
             }
             if (hasParentApproval(leave)) {
@@ -4975,13 +5054,37 @@
             if (key.includes('dean')) return 'Dean';
             return stage && (stage.name || stage.id) ? (stage.name || stage.id) : 'Approval stage';
         }
+        function isCompletedMakeupWalkin(rec) {
+            if (!rec || rec.archived || !isWalkinLeave(rec) || isOfficialLeave(rec)) return false;
+            return rec.reconciliationStatus === 'reconciled'
+                || Boolean(rec.returnConfirmed)
+                || String(rec.status || '').toLowerCase() === 'approved';
+        }
+        function portalRecordStatus(rec) {
+            return isCompletedMakeupWalkin(rec)
+                ? 'approved'
+                : String(rec && rec.status || 'pending').toLowerCase();
+        }
         function portalReportingLeaves(student) {
             if (!student || typeof AppDB === 'undefined' || typeof AppDB.getLeavesByStudentNo !== 'function') return [];
             return AppDB.getLeavesByStudentNo(student.studentNo || student.studentId || '')
-                .filter(rec => rec && !rec.archived && !isWalkinLeave(rec) && !String(rec.reconciliationSourceId || '').trim());
+                .filter(rec => rec && !rec.archived && (!isWalkinLeave(rec) || isOfficialLeave(rec) || isCompletedMakeupWalkin(rec)));
         }
         function portalRecentLeaves(student) {
-            return portalReportingLeaves(student);
+            if (!student || typeof AppDB === 'undefined' || typeof AppDB.getLeavesByStudentNo !== 'function') return [];
+            const byId = new Map();
+            const studentLeaves = AppDB.getLeavesByStudentNo(student.studentNo || student.studentId || '');
+            portalReportingLeaves(student).forEach(rec => {
+                if (rec && rec.id) byId.set(String(rec.id), rec);
+            });
+            getMakeupRequests(student).forEach(rec => {
+                if (rec && rec.id) byId.set(String(rec.id), rec);
+            });
+            studentLeaves.filter(isCompletedMakeupWalkin)
+                .forEach(rec => {
+                    if (rec.id) byId.set(String(rec.id), rec);
+                });
+            return [...byId.values()];
         }
         function portalRecentNeedsAttention(rec, allLeaves) {
             if (!rec || rec.archived) return false;
@@ -4989,7 +5092,10 @@
             return needsMakeupReminder(rec, allLeaves || []);
         }
         function portalRecentStatusInfo(rec, allLeaves) {
-            const status = String(rec && rec.status || 'pending').toLowerCase();
+            const status = portalRecordStatus(rec);
+            if (isCompletedMakeupWalkin(rec)) {
+                return { cls: 'approved', label: 'Approved' };
+            }
             if (portalRecentNeedsAttention(rec, allLeaves)) {
                 const related = findRelatedMakeupLeave(rec, allLeaves || []);
                 if (isTruancyFromMissingMakeup(rec, allLeaves || [])) {
@@ -5023,8 +5129,29 @@
                 : [];
             const rec = all.find(item => String(item && item.id || '') === String(leaveId || ''));
             if (!rec) return;
-            if (isWalkinLeave(rec) || isMakeupApprovalRequest(rec)) {
-                window.location.href = makeupCaseUrl(rec);
+            if (AUTH_MODE === 'parent' && isMakeupApprovalRequest(rec) && !isWalkinLeave(rec) && (isLeaveAtParentStage(rec) || hasParentApproval(rec))) {
+                await parentSignMakeupLeave(rec.id);
+                return;
+            }
+            if (portalRecentNeedsAttention(rec, all)) {
+                const related = findRelatedMakeupLeave(rec, all);
+                if (isTruancyFromMissingMakeup(rec, all)) {
+                    window.location.href = 'leave-form.html?id=' + encodeURIComponent(rec.id || '') + '&paper=1';
+                    return;
+                }
+                if (related && !hasReachedHomeroomReview(related)) {
+                    if (AUTH_MODE === 'parent' && isLeaveAtParentStage(related)) {
+                        await parentSignMakeupLeave(related.id);
+                        return;
+                    }
+                    window.location.href = 'leave-form.html?id=' + encodeURIComponent(related.id || '');
+                    return;
+                }
+                await beginMakeupFromReminder(rec.id);
+                return;
+            }
+            if (isWalkinLeave(rec)) {
+                window.location.href = 'leave-form.html?id=' + encodeURIComponent(rec.id || '') + '&paper=1';
                 return;
             }
             if (prefix === 'dHome') {
@@ -5035,8 +5162,9 @@
         }
         function portalCurrentStageLabel(rec) {
             if (!rec) return '—';
+            if (isCompletedMakeupWalkin(rec)) return 'Completed';
             if (isOfficialLeave(rec) && isWalkinLeave(rec)) return 'Office confirmation';
-            const status = String(rec.status || 'pending').toLowerCase();
+            const status = portalRecordStatus(rec);
             if (status === 'approved' || status === 'reconciled') return 'Completed';
             if (status === 'rejected') return 'Disagreed';
             const workflow = currentWorkflow();
@@ -5066,7 +5194,7 @@
             const history = Array.isArray(rec.stageHistory) ? rec.stageHistory : [];
             const approvedIds = new Set(history.filter(item => item.action === 'approved').map(item => String(item.stageId || '')));
             const currentIndex = Number(rec.currentStageIndex) || 0;
-            const status = String(rec.status || 'pending').toLowerCase();
+            const status = portalRecordStatus(rec);
             const applicable = workflow
                 .map((stage, index) => ({ stage, index }))
                 .filter(item => !AppDB.isStageApplicable || AppDB.isStageApplicable(item.stage, rec));
@@ -5094,7 +5222,9 @@
                         ? '<strong>Disagreed reason</strong><span>' + escapeHtml(latestReturn.comment) + '</span>'
                         : '';
                 }
-                if (note) note.textContent = days >= 3
+                if (note) note.textContent = isCompletedMakeupWalkin(rec)
+                    ? 'Paper make-up form verified by the Discipline Office.'
+                    : days >= 3
                     ? 'This leave is ' + days + ' days. Dean approval is required after Discipline Office.'
                     : 'Dean approval appears for leave of 3 days or more.';
             }
@@ -5147,7 +5277,7 @@
                 ['funeral', 'Funeral'],
                 ['official', 'Official'],
             ];
-            const counted = leaves.filter(rec => !['rejected', 'archived'].includes(String(rec.status || 'pending').toLowerCase()));
+            const counted = leaves.filter(rec => !['rejected', 'archived'].includes(portalRecordStatus(rec)));
             const cards = types.map(([key, label]) => {
                 const matching = counted.filter(rec => leaveTypeKey(rec) === key);
                 const periods = matching.reduce((sum, rec) => sum + periodCount(rec), 0);
@@ -5171,7 +5301,7 @@
             const statusFilter = String(document.getElementById('dRequestStatusFilter')?.value || '');
             const typeFilter = String(document.getElementById('dRequestTypeFilter')?.value || '');
             const filtered = leaves.filter(rec => {
-                const status = String(rec.status || 'pending').toLowerCase();
+                const status = portalRecordStatus(rec);
                 const type = leaveTypeKey(rec);
                 if (statusFilter && status !== statusFilter) return false;
                 if (typeFilter && type !== typeFilter) return false;
@@ -5184,8 +5314,10 @@
                 return;
             }
             const rows = filtered.map(rec => {
-                const status = String(rec.status || 'pending').toLowerCase();
-                const href = rec.id ? 'leave-form.html?id=' + encodeURIComponent(rec.id) : '#';
+                const status = portalRecordStatus(rec);
+                const href = rec.id
+                    ? (isCompletedMakeupWalkin(rec) ? leavePrintUrl(rec, '') : 'leave-form.html?id=' + encodeURIComponent(rec.id))
+                    : '#';
                 return '<tr>' +
                     '<td><strong>' + escapeHtml(rec.fromDate || '—') + '</strong><small>' + escapeHtml(rec.toDate && rec.toDate !== rec.fromDate ? 'to ' + rec.toDate : '') + '</small></td>' +
                     '<td><span class="desktop-type-label t-' + escapeHtml(leaveTypeKey(rec)) + '">' + escapeHtml(leaveTypeLabel(leaveTypeKey(rec))) + '</span></td>' +
@@ -5248,15 +5380,12 @@
         function renderPortalHome(student) {
             if (!student || typeof AppDB === 'undefined' || typeof AppDB.getLeavesByStudentNo !== 'function') return;
             const all = AppDB.getLeavesByStudentNo(student.studentNo || student.studentId || '').slice();
+            const leaves = all.filter(rec => !rec.archived && !isWalkinLeave(rec));
             const reportingLeaves = portalReportingLeaves(student);
-            const leaves = reportingLeaves;
             const recentLeaves = portalRecentLeaves(student);
             const pending = leaves.filter(rec => (rec.status || 'pending') === 'pending');
-            const approved = leaves.filter(rec => rec.status === 'approved');
-            const makeupCases = window.MakeupService
-                ? window.MakeupService.casesForStudent(student, all).filter(item => item.state !== 'completed')
-                : getMakeupRequests(student).map(walkin => ({ id: walkin.id, walkin, meta: { group: 'action' } }));
-            const makeup = makeupCases.filter(item => item.meta.group === 'action').map(item => item.walkin);
+            const approved = reportingLeaves.filter(rec => portalRecordStatus(rec) === 'approved');
+            const makeup = getMakeupRequests(student);
             const signatureLeaves = leaves.filter(isLeaveAtParentStage);
             const today = todayStr();
             const active = pending.slice().sort((a, b) => String(b.fromDate || '').localeCompare(String(a.fromDate || '')))[0]
@@ -5287,20 +5416,23 @@
                 portalHomeSet(prefix, 'Role', AUTH_MODE === 'parent' ? 'Parent' : 'Student');
                 portalHomeSet(prefix, 'PendingCount', String(pending.length));
                 portalHomeSet(prefix, 'ApprovedCount', String(approved.length));
-                portalHomeSet(prefix, 'MakeupCount', String(makeupCases.length));
+                portalHomeSet(prefix, 'MakeupCount', String(makeup.length));
                 const attention = document.getElementById(prefix + 'Attention');
                 const attentionButton = document.getElementById(prefix + 'AttentionButton');
                 attention.classList.toggle('is-clear', PORTAL_HOME_ATTENTION.type === 'none');
                 if (PORTAL_HOME_ATTENTION.type === 'signature') {
+                    const attentionLeave = signatureLeaves[0];
+                    const makeupSignature = isMakeupApprovalRequest(attentionLeave);
                     portalHomeSet(prefix, 'AttentionKicker', 'Action required');
                     portalHomeSet(prefix, 'AttentionTitle', signatureLeaves.length + ' form' + (signatureLeaves.length === 1 ? '' : 's') + ' need your signature');
-                    portalHomeSet(prefix, 'AttentionText', 'Review and sign before the school approval process can continue.');
-                    attentionButton.textContent = 'Review & sign';
+                    portalHomeSet(prefix, 'AttentionText', makeupSignature ? 'Add the required comment and parent signature to continue.' : 'Review and sign before the school approval process can continue.');
+                    attentionButton.textContent = makeupSignature ? 'Parent sign' : 'Review & sign';
                 } else if (PORTAL_HOME_ATTENTION.type === 'makeup') {
-                    portalHomeSet(prefix, 'AttentionKicker', 'Make-up leave');
-                    portalHomeSet(prefix, 'AttentionTitle', makeup.length + ' make-up case' + (makeup.length === 1 ? '' : 's') + ' need action');
-                    portalHomeSet(prefix, 'AttentionText', 'Open the dedicated make-up page to complete the required next step.');
-                    attentionButton.textContent = 'Open cases';
+                    const overdue = isTruancyFromMissingMakeup(makeup[0], all);
+                    portalHomeSet(prefix, 'AttentionKicker', overdue ? 'Paper form required' : 'Make-up reminder');
+                    portalHomeSet(prefix, 'AttentionTitle', makeup.length + ' make-up leave form' + (makeup.length === 1 ? '' : 's') + ' need attention');
+                    portalHomeSet(prefix, 'AttentionText', overdue ? MAKEUP_PAPER_INSTRUCTION : 'Complete the related online leave form and parent approval within three days.');
+                    attentionButton.textContent = overdue ? 'Open paper form' : 'Review';
                 } else if (PORTAL_HOME_ATTENTION.type === 'waiting-parent') {
                     portalHomeSet(prefix, 'AttentionKicker', 'Waiting for approval');
                     portalHomeSet(prefix, 'AttentionTitle', signatureLeaves.length + ' form' + (signatureLeaves.length === 1 ? '' : 's') + ' awaiting parent approval');
@@ -5365,7 +5497,7 @@
                 return;
             }
             if (action.type === 'makeup' && action.leaveId) {
-                openMakeupPortal(action.leaveId);
+                await beginMakeupFromReminder(action.leaveId);
                 return;
             }
             if (action.leaveId) {
@@ -5501,7 +5633,10 @@
             const today = todayStr();
             const buckets = { pending: [], overdue: [], upcoming: [], history: [] };
             all.forEach(rec => {
-                if (isWalkinLeave(rec) || String(rec.reconciliationSourceId || '').trim()) return;
+                if (isReconciliationRequest(rec)) {
+                    buckets.overdue.push(rec);
+                    return;
+                }
                 categorizeLeave(rec, today).forEach(cat => {
                     if (buckets[cat]) buckets[cat].push(rec);
                 });

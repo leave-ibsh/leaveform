@@ -29,7 +29,7 @@
   };
   const SETTINGS_DOC_ID = 'app';
   const BATCH_LIMIT = 400;
-  const GRADE_ADVANCE_MAX_STUDENTS = 600;
+  const GRADE_ADVANCE_MAX_STUDENTS = 1000;
   const GRADE_ADVANCE_CHUNK_SIZE = 300;
   const PERIODS = [
     { id: 1,   label: 'Period 1', start: '08:10', end: '09:00' },
