@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="admin-build" content="admin-mobile-carbon-2026-07-17-v1">
+<meta name="admin-build" content="admin-full-role-visibility-2026-07-17-v3">
 <title>IBSH Attendance - Admin</title>
 <link rel="icon" href="data:,">
 <script>
@@ -3043,11 +3043,30 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
 .tcm-tabbtn-wrap { position: relative; display: flex; }
 .tcm-tabbtn-wrap > .tcm-tabbtn { flex: 1; }
 @keyframes tcmTabIconIn { from { opacity: .5; transform: translateY(3px) scale(.88); } to { opacity: 1; transform: translateY(0) scale(1); } }
-/* Mobile admin: compact, flat, task-first layout based on Carbon's 4px grid. */
+/* Mobile admin: compact, task-first layout with softer visual hierarchy. */
 @media(max-width:768px) {
+  html:not([data-theme="dark"]) {
+    --bg-base: #eef1ef;
+    --surface: #fafbf9;
+    --surface-2: #e8ede9;
+    --surface-hover: #e1e7e3;
+    --line: rgba(17, 24, 39, 0.1);
+    --line-strong: rgba(17, 24, 39, 0.18);
+    --topbar-bg: rgba(250, 251, 249, 0.94);
+  }
+  body.admin-b {
+    min-height: 100svh;
+    min-height: 100dvh;
+    background: var(--bg-base);
+  }
   body.admin-b,
   body.admin-b * {
     letter-spacing: 0;
+  }
+  body.admin-b .main {
+    min-height: 100svh;
+    min-height: 100dvh;
+    background: var(--bg-base);
   }
   body.admin-b.tcm-active .main {
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
@@ -3074,7 +3093,7 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
     width: 44px;
     min-width: 44px;
     height: 44px;
-    border-radius: 4px;
+    border-radius: 12px;
     box-shadow: none;
   }
   body.admin-b .content {
@@ -3121,9 +3140,9 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
     padding: 14px;
     border: 1px solid var(--line);
     border-left: 4px solid var(--warning);
-    border-radius: 4px;
+    border-radius: 16px;
     background: var(--surface);
-    box-shadow: none;
+    box-shadow: var(--shadow-sm);
   }
   body.admin-b .mobile-dash-alert.is-clear {
     border-left-color: var(--success);
@@ -3141,7 +3160,7 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
     min-width: 76px;
     min-height: 48px;
     padding: 0 14px;
-    border-radius: 4px;
+    border-radius: 12px;
     font-size: 0.84rem;
     font-weight: 600;
   }
@@ -3150,8 +3169,9 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
     gap: 0;
     overflow: hidden;
     border: 1px solid var(--line);
-    border-radius: 4px;
+    border-radius: 14px;
     background: var(--surface);
+    box-shadow: var(--shadow-sm);
   }
   body.admin-b .mobile-dash-stat {
     min-height: 78px;
@@ -3197,9 +3217,9 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   body.admin-b .tcm-notify-card,
   body.admin-b .tcm-me-card,
   body.admin-b .tcm-me-list {
-    border-radius: 4px;
+    border-radius: 16px;
     background: var(--surface);
-    box-shadow: none;
+    box-shadow: var(--shadow-sm);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -3221,30 +3241,39 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
     font-weight: 400;
   }
   body.admin-b .mobile-dash-quick-grid {
-    grid-template-columns: 1fr;
-    gap: 0;
-    border-top: 1px solid var(--line);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 0 12px 12px;
   }
   body.admin-b .mobile-dash-action {
-    min-height: 56px;
-    align-content: center;
-    padding: 10px 14px;
-    border: 0;
-    border-bottom: 1px solid var(--line);
-    border-radius: 0;
-    background: transparent;
+    position: relative;
+    min-height: 88px;
+    align-content: end;
+    padding: 13px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface-2);
     box-shadow: none;
   }
-  body.admin-b .mobile-dash-action:last-child {
-    border-bottom: 0;
+  body.admin-b .mobile-dash-action:active {
+    transform: scale(0.98);
+    background: var(--surface-hover);
   }
   body.admin-b .mobile-dash-action strong {
-    font-size: 0.9rem;
-    font-weight: 600;
+    font-size: 0.94rem;
+    font-weight: 700;
   }
   body.admin-b .mobile-dash-action span {
     font-size: 0.74rem;
-    font-weight: 400;
+    font-weight: 500;
+  }
+  body.admin-b .mobile-dash-action .mobile-dash-action-meta {
+    position: absolute;
+    top: 11px;
+    right: 11px;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
   }
   body.admin-b .mobile-dash-list {
     gap: 0;
@@ -3264,7 +3293,7 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   body.admin-b .mobile-dash-avatar {
     width: 36px;
     height: 36px;
-    border-radius: 4px;
+    border-radius: 12px;
     font-size: 0.78rem;
     font-weight: 650;
   }
@@ -3285,8 +3314,8 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   body.admin-b .operations-hero,
   body.admin-b .mobile-settings-panel-bar,
   body.admin-b .settings-side {
-    border-radius: 8px;
-    box-shadow: none;
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
   }
@@ -3304,7 +3333,7 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   }
   body.admin-b #sec-operations .operations-hero {
     padding: 16px;
-    border-radius: 8px;
+    border-radius: 16px;
   }
   body.admin-b #sec-operations .operations-hero h2 {
     font-size: 1.45rem;
@@ -3315,7 +3344,11 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   body.admin-b textarea,
   body.admin-b .btn {
     min-height: 44px;
-    border-radius: 4px;
+    border-radius: 12px;
+  }
+  body.admin-b .table-wrap {
+    border-radius: 14px;
+    background: var(--surface);
   }
   body.admin-b .mobile-admin-card-list,
   body.admin-b .mobile-recon-card-list {
@@ -3367,7 +3400,7 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   }
   body.admin-b .mobile-settings-row {
     min-height: 56px;
-    border-radius: 0;
+    border-radius: 12px;
   }
   body.admin-b .tcm-screen[data-tcm-active] {
     padding: 8px 12px max(84px, calc(72px + env(safe-area-inset-bottom)));
@@ -3388,18 +3421,23 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   body.admin-b .tcm-detail-actions .tcm-bigbtn,
   body.admin-b .tcm-sign-actions button {
     min-height: 48px;
-    border-radius: 4px;
+    border-radius: 12px;
   }
   body.admin-b .tcm-sign-sheet {
-    border-radius: 8px 8px 0 0;
+    border-radius: 18px 18px 0 0;
   }
   body.admin-b .tcm-tabbar {
+    position: fixed !important;
+    inset: auto 0 0 !important;
     min-height: 64px;
     padding: 2px 0 calc(2px + env(safe-area-inset-bottom));
-    background: var(--surface);
-    box-shadow: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    background: var(--topbar-bg);
+    border-top-color: var(--line-strong);
+    box-shadow: 0 -12px 30px -26px rgba(17, 24, 39, 0.7);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
   }
   body.admin-b .tcm-tabbtn {
     position: relative;
@@ -3430,6 +3468,44 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
     background: currentColor;
     content: '';
   }
+  body.admin-b .mobile-date-filter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+  }
+  body.admin-b .mobile-date-filter > input[type="date"] {
+    width: 100% !important;
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 1rem;
+  }
+  body.admin-b .mobile-date-filter > span {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-align: center;
+  }
+  body.admin-b .mobile-date-filter > select,
+  body.admin-b .mobile-date-filter > button {
+    grid-column: 1 / -1;
+    width: 100% !important;
+  }
+  body.admin-b .walkin-leave-form .mobile-date-pair {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  body.admin-b .walkin-leave-form .mobile-date-pair .form-group,
+  body.admin-b .walkin-leave-form .mobile-date-pair input {
+    min-width: 0;
+  }
+  body.admin-b .mobile-target-flash {
+    animation: mobileTargetFlash 700ms var(--ease-out);
+  }
+}
+@keyframes mobileTargetFlash {
+  0% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  45% { box-shadow: 0 0 0 5px var(--accent-soft); }
+  100% { box-shadow: var(--shadow-sm); }
 }
 body.admin-auth-locked { overflow: hidden; }
 body.admin-auth-locked > .hamburger,
@@ -3706,7 +3782,7 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
                   <option value="official">Official</option>
                 </select>
               </div>
-              <div class="row2">
+              <div class="row2 mobile-date-pair">
                 <div class="form-group"><label for="walkinFromDate">From Date</label><input class="form-control" type="date" id="walkinFromDate"></div>
                 <div class="form-group"><label for="walkinToDate">To Date</label><input class="form-control" type="date" id="walkinToDate"></div>
               </div>
@@ -3792,7 +3868,7 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
       <div class="card">
         <div class="card-header">
           <h2>Approved Leaves</h2>
-          <div class="search-bar">
+          <div class="search-bar mobile-date-filter">
             <input type="date" id="leaveFilterFrom" class="form-control" style="width: auto;"> <span>to</span> <input type="date" id="leaveFilterTo" class="form-control" style="width: auto;">
             <select id="leaveClassFilter" class="form-control" style="width: auto;"><option value="">All Classes</option></select>
             <button class="btn btn-primary btn-sm" onclick="renderAllLeaves()">Filter</button>
@@ -3814,7 +3890,7 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
       <div class="card">
         <div class="card-header">
           <h2>Activity Log</h2>
-          <div class="search-bar">
+          <div class="search-bar mobile-date-filter">
             <input type="date" id="logFilterFrom" class="form-control" style="width:auto;">
             <span>to</span>
             <input type="date" id="logFilterTo" class="form-control" style="width:auto;">
@@ -4585,6 +4661,10 @@ function isSuperAdminUser() {
 function isAdminRole() {
   return isSuperAdminUser() || currentAdminRoles().includes('admin');
 }
+function hasFullAdminVisibility() {
+  const roles = currentAdminRoles();
+  return isAdminRole() || roles.includes('discipline') || roles.includes('dean');
+}
 function isParentApprovalStage(stage) {
   if (!stage) return false;
   if (stage.approverType === 'parent') return true;
@@ -4614,18 +4694,18 @@ function canActOnLeaveStage(leave) {
   return currentAdminRoles().includes(required);
 }
 function canManageWalkin() {
-  return isAdminRole();
+  return hasFullAdminVisibility();
 }
 function canViewStats() {
-  return isAdminRole() || currentAdminRoles().includes('discipline') || currentAdminRoles().includes('dean');
+  return hasFullAdminVisibility();
 }
 function canViewSettings() {
-  return isSuperAdminUser();
+  return hasFullAdminVisibility();
 }
 function canViewSettingsTab(name) {
   if (['students', 'users', 'holidays', 'examPeriods', 'export'].includes(name)) return canViewSettings();
   if (name === 'diagnostics') return canViewSettings();
-  if (['notifications', 'workflow'].includes(name)) return isAdminRole();
+  if (['notifications', 'workflow'].includes(name)) return canViewSettings();
   if (name === 'danger') return canAccessDanger();
   return false;
 }
@@ -4856,6 +4936,20 @@ function mobileDashboardOpenPanel(name) {
   }
   if (['walkin', 'powerschool', 'makeup'].includes(name)) {
     switchSection('operations');
+    const targetIds = {
+      walkin: 'walkinCard',
+      powerschool: 'powerschoolCheckCard',
+      makeup: 'reconPendingCard',
+    };
+    window.setTimeout(() => {
+      const target = document.getElementById(targetIds[name]);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.classList.remove('mobile-target-flash');
+      void target.offsetWidth;
+      target.classList.add('mobile-target-flash');
+      window.setTimeout(() => target.classList.remove('mobile-target-flash'), 760);
+    }, 80);
     return;
   }
   const section = $('#sec-dashboard');
@@ -4933,12 +5027,21 @@ function renderMobileDashboard(options = {}) {
     : showAdminOps && makeUpLeaves.length
       ? { title: `${makeUpLeaves.length} make-up form${makeUpLeaves.length > 1 ? 's' : ''} pending`, sub: 'Confirm paper official leave or wait for online make-up approval.', cta: 'Open', action: "switchSection('operations')" }
       : { title: 'No urgent dashboard action', sub: 'Current leave workflow is clear for your role.', cta: 'View leaves', action: "switchSection('leaves')", clear: true };
-  const quickActions = [
-    showAdminOps ? { title: 'Operations', sub: 'Walk-in, PowerSchool, make-up', action: "switchSection('operations')" } : null,
-    homeroomAvailable ? { title: 'My Class', sub: 'Attendance view', action: "mobileDashboardOpenPanel('homeroom')" } : null,
-    { title: 'Calendar', sub: 'Monthly overview', action: "mobileDashboardOpenPanel('calendar')" },
-    { title: 'All Leaves', sub: 'Manage records', action: "switchSection('leaves')" },
-  ].filter(Boolean);
+  const quickActions = showAdminOps
+    ? [
+        { title: 'Walk-in', sub: 'Create a leave', meta: 'New', action: "mobileDashboardOpenPanel('walkin')" },
+        { title: 'PowerSchool', sub: 'Check tardies', meta: 'Daily', action: "mobileDashboardOpenPanel('powerschool')" },
+        { title: 'Make-up', sub: 'Paper follow-up', meta: String(makeUpLeaves.length), action: "mobileDashboardOpenPanel('makeup')" },
+        { title: 'All Leaves', sub: 'Manage records', meta: visiblePendingLeaves.length ? `${visiblePendingLeaves.length} pending` : 'Records', action: "switchSection('leaves')" },
+      ]
+    : [
+        homeroomAvailable
+          ? { title: 'My Class', sub: 'Attendance view', meta: String(visibleStudents.length), action: "mobileDashboardOpenPanel('homeroom')" }
+          : { title: 'Statistics', sub: 'Attendance data', meta: 'View', action: "switchSection('stats')" },
+        { title: 'Calendar', sub: 'Monthly overview', meta: 'Month', action: "mobileDashboardOpenPanel('calendar')" },
+        { title: 'Approvals', sub: 'Review requests', meta: String(actionableLeaves.length), action: "switchSection('leaves')" },
+        { title: 'Activity', sub: 'Recent records', meta: 'Log', action: "switchSection('logs')" },
+      ];
   const recent = [];
   visiblePendingLeaves.slice(0, 3).forEach(leave => recent.push({ leave, chip: canActOnLeaveStage(leave) ? 'Action' : 'Review' }));
   visibleDashLeaves.slice(0, 3).forEach(leave => {
@@ -4987,7 +5090,8 @@ function renderMobileDashboard(options = {}) {
       </div>
       <div class="mobile-dash-quick-grid">
         ${quickActions.map(action => `
-          <button type="button" class="mobile-dash-action" onclick="${action.action}">
+          <button type="button" class="mobile-dash-action" onclick="${action.action}" aria-label="${escapeHtml(action.title + ': ' + action.sub)}">
+            <span class="mobile-dash-action-meta">${escapeHtml(action.meta)}</span>
             <strong>${escapeHtml(action.title)}</strong>
             <span>${escapeHtml(action.sub)}</span>
           </button>
@@ -5381,7 +5485,7 @@ function updateMobileTabLayout() {
 // Apply role-based visibility on sidebar nav and settings tabs.
 // Called once after sign-in (in initialiseAdminApp), and again whenever role changes.
 function applyRoleVisibility() {
-  // Settings and data management are reserved for super admins.
+  // Global staff can inspect every section; only super admins can edit settings.
   const settingsNav = document.querySelector('.sidebar-nav button[data-section="settings"]');
   if (settingsNav) settingsNav.style.display = canViewSettings() ? '' : 'none';
   const focusCard = document.querySelector('.bento-focus-card');
@@ -5408,10 +5512,10 @@ function applyRoleVisibility() {
   const showUsersTab = showSettingsDataTabs;
   const showHolidaysTab = showSettingsDataTabs;
   const showExamPeriodsTab = showSettingsDataTabs;
-  const showNotificationsTab = isAdminRole();
+  const showNotificationsTab = showSettingsDataTabs;
   const showDiagnosticsTab = showSettingsDataTabs;
   const showExportTab = showSettingsDataTabs;
-  const showWorkflowTab = isAdminRole();
+  const showWorkflowTab = showSettingsDataTabs;
   const showDangerTab = canAccessDanger();
   const tabPerms = { students: showStudentsTab, users: showUsersTab, holidays: showHolidaysTab, examPeriods: showExamPeriodsTab, notifications: showNotificationsTab, diagnostics: showDiagnosticsTab, export: showExportTab, workflow: showWorkflowTab, danger: showDangerTab };
   Object.entries(tabPerms).forEach(([tab, ok]) => {
@@ -5425,7 +5529,7 @@ function applyRoleVisibility() {
     if (firstVisible) switchSettingsTab(firstVisible.dataset.stab);
   }
   const canEditCoreSettings = canEditSettings();
-  document.querySelectorAll('.settings-pane[data-stab="students"] .card-header .btn-group, .settings-pane[data-stab="users"] .card-header .btn-group, .settings-pane[data-stab="holidays"] .card-header .btn-group, .settings-pane[data-stab="examPeriods"] .card-header .btn-group')
+  document.querySelectorAll('.settings-pane[data-stab="students"] .card-header .btn-group, .settings-pane[data-stab="users"] .card-header .btn-group, .settings-pane[data-stab="holidays"] .card-header .btn-group, .settings-pane[data-stab="examPeriods"] .card-header .btn-group, .settings-pane[data-stab="workflow"] .card-header .btn-group, .settings-pane[data-stab="notifications"] .card-header .btn-group')
     .forEach(group => { group.style.display = canEditCoreSettings ? '' : 'none'; });
   updateMobileTabLayout();
   renderMobileSettingsOverview();
@@ -6929,14 +7033,13 @@ function isLeaveAtParentStage(leave) {
   return !history.some(h => h.action === 'approved' && String(h.stageId) === String(stage.id));
 }
 // Returns true if the current logged-in admin should see this leave in their pending lists.
-// - super admin / admin role: see everything (only filtered by class if homeroom-only, handled elsewhere)
-// - other staff (homeroom / discipline / dean): only see leaves AT their own stage
+// - super admin / admin / discipline / dean: see every workflow stage
+// - homeroom-only staff: only see leaves currently assigned to their stage and class
 function shouldShowLeaveToCurrentAdmin(leave) {
-  // Hide parent-pending from stage staff; super admin/admin can audit every request.
-  if (isLeaveAtParentStage(leave) && !isAdminRole()) return false;
-  // Super admin and admin role see all (no per-stage gate)
-  if (isAdminRole()) return true;
-  // Otherwise the current stage must match the user's role
+  if (hasFullAdminVisibility()) return true;
+  // Hide parent-pending from class-scoped stage staff.
+  if (isLeaveAtParentStage(leave)) return false;
+  // Otherwise the current stage must match the user's role and class.
   return canActOnLeaveStage(leave);
 }
 function renderPendingLeaves() {
@@ -8615,7 +8718,7 @@ function renderMobileSettingsOverview() {
       </div>
       <div class="mobile-settings-role">
         <span class="mobile-settings-pill">${escapeHtml(roleLabel)}</span>
-        <span class="mobile-settings-pill">${canEditSettings() ? 'Can edit settings' : 'View limited settings'}</span>
+        <span class="mobile-settings-pill">${canEditSettings() ? 'Can edit settings' : 'View-only settings'}</span>
       </div>
     </section>
     <div class="mobile-settings-list">${rowHtml}</div>
@@ -8748,8 +8851,15 @@ function renderNotificationSettings() {
   const settings = AppDB.getSettings ? AppDB.getSettings() : {};
   const webhook = $('#notificationWebhookUrl');
   const appUrl = $('#notificationAppUrl');
-  if (webhook) webhook.value = settings.notificationWebhookUrl || '';
-  if (appUrl) appUrl.value = settings.notificationAppUrl || location.origin + location.pathname.replace(/\/[^/]*$/, '');
+  const editable = canEditSettings();
+  if (webhook) {
+    webhook.value = settings.notificationWebhookUrl || '';
+    webhook.disabled = !editable;
+  }
+  if (appUrl) {
+    appUrl.value = settings.notificationAppUrl || location.origin + location.pathname.replace(/\/[^/]*$/, '');
+    appUrl.disabled = !editable;
+  }
 }
 async function saveNotificationSettings() {
   if (!canEditSettings()) { toast('Settings is restricted to admins.', 'error'); return; }
@@ -8768,6 +8878,7 @@ async function saveNotificationSettings() {
   }
 }
 async function sendTestNotification() {
+  if (!canEditSettings()) { toast('Notification tests are restricted to super admins.', 'error'); return; }
   if (!window.IBSHNotifications) {
     toast('Notification service is not loaded.', 'error');
     return;
@@ -8848,21 +8959,22 @@ function renderWorkflowStages() {
   const stages = _readWorkflowDraft();
   const container = $('#workflowStagesList');
   if (!container) return;
+  const editable = canEditSettings();
   if (!stages.length) {
-    container.innerHTML = '<p style="color:var(--text-muted)">No stages defined. Click "+ Add Stage" to begin.</p>';
+    container.innerHTML = '<p style="color:var(--text-muted)">No approval stages are configured.</p>';
     return;
   }
-  let h = '<table><thead><tr><th style="width:60px">Order</th><th>Stage Name</th><th>ID</th><th style="width:170px">Actions</th></tr></thead><tbody>';
+  let h = '<table><thead><tr><th style="width:60px">Order</th><th>Stage Name</th><th>ID</th>' + (editable ? '<th style="width:170px">Actions</th>' : '') + '</tr></thead><tbody>';
   stages.forEach((s, i) => {
     h += `<tr>
       <td><strong>${i + 1}</strong></td>
-      <td><input class="form-control" data-wf-name="${i}" value="${escapeHtml(s.name || '')}" placeholder="e.g. Dean's Office / Dean approval"></td>
-      <td><input class="form-control" data-wf-id="${i}" value="${escapeHtml(s.id || '')}" placeholder="auto"></td>
-      <td style="white-space:nowrap">
+      <td><input class="form-control" data-wf-name="${i}" value="${escapeHtml(s.name || '')}" placeholder="e.g. Dean's Office / Dean approval" ${editable ? '' : 'disabled'}></td>
+      <td><input class="form-control" data-wf-id="${i}" value="${escapeHtml(s.id || '')}" placeholder="auto" ${editable ? '' : 'disabled'}></td>
+      ${editable ? `<td style="white-space:nowrap">
         <button class="btn btn-outline btn-sm" onclick="moveWorkflowStage(${i}, -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
         <button class="btn btn-outline btn-sm" onclick="moveWorkflowStage(${i}, 1)" ${i === stages.length - 1 ? 'disabled' : ''}>↓</button>
         <button class="btn btn-danger btn-sm" onclick="removeWorkflowStage(${i})">✕</button>
-      </td></tr>`;
+      </td>` : ''}</tr>`;
   });
   h += '</tbody></table>';
   container.innerHTML = h;
@@ -8880,11 +8992,13 @@ function renderWorkflowStages() {
   });
 }
 function addWorkflowStage() {
+  if (!canEditSettings()) { toast('Workflow editing is restricted to super admins.', 'error'); return; }
   const stages = _readWorkflowDraft();
   stages.push({ id: 'stage-' + (stages.length + 1), name: '', approverType: 'staff' });
   renderWorkflowStages();
 }
 function removeWorkflowStage(index) {
+  if (!canEditSettings()) { toast('Workflow editing is restricted to super admins.', 'error'); return; }
   const stages = _readWorkflowDraft();
   if (stages.length <= 1) {
     toast('At least one stage is required.', 'error');
@@ -8894,6 +9008,7 @@ function removeWorkflowStage(index) {
   renderWorkflowStages();
 }
 function moveWorkflowStage(index, delta) {
+  if (!canEditSettings()) { toast('Workflow editing is restricted to super admins.', 'error'); return; }
   const stages = _readWorkflowDraft();
   const target = index + delta;
   if (target < 0 || target >= stages.length) return;
@@ -8903,6 +9018,7 @@ function moveWorkflowStage(index, delta) {
   renderWorkflowStages();
 }
 async function saveWorkflowStages() {
+  if (!canEditSettings()) { toast('Workflow editing is restricted to super admins.', 'error'); return; }
   const stages = _readWorkflowDraft();
   const cleaned = stages
     .map((s, i) => {
