@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="portal-build" content="index-inline-makeup-2026-07-17-v2">
+    <meta name="portal-build" content="index-three-day-submit-window-2026-07-20-v3">
     <title>IBSH Student Leave Form</title>
     <link rel="icon" href="data:,">
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
@@ -2741,6 +2741,7 @@
                                 </select>
                             </div>
                         </div>
+                        <div class="warning-message" id="submissionWindowWarning"></div>
                         <div class="warning-message" id="dateConflictWarning"></div>
                         <div class="form-group">
                             <label for="totalPeriods">Total Periods</label>
@@ -3195,6 +3196,52 @@
             }
             return false;
         }
+        const LEAVE_SUBMISSION_GRACE_DAYS = 3;
+        function addCalendarDays(dateStr, days) {
+            const date = new Date(String(dateStr || '') + 'T12:00:00');
+            if (Number.isNaN(date.getTime())) return '';
+            date.setDate(date.getDate() + Number(days || 0));
+            return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        }
+        function leaveSubmissionDeadline() {
+            const fromDate = document.getElementById('fromDate')?.value || '';
+            const toDate = document.getElementById('toDate')?.value || fromDate;
+            return addCalendarDays(toDate || fromDate, LEAVE_SUBMISSION_GRACE_DAYS);
+        }
+        function validateLeaveSubmissionWindow({ showToast = false } = {}) {
+            const warningEl = document.getElementById('submissionWindowWarning');
+            const fromDate = document.getElementById('fromDate')?.value || '';
+            const toDate = document.getElementById('toDate')?.value || fromDate;
+            const deadline = leaveSubmissionDeadline();
+            if (!fromDate || !toDate || !deadline) {
+                if (warningEl) {
+                    warningEl.textContent = '';
+                    warningEl.style.display = 'none';
+                }
+                return true;
+            }
+            const expired = todayStr() > deadline;
+            if (!expired) {
+                if (warningEl) {
+                    warningEl.textContent = '';
+                    warningEl.style.display = 'none';
+                }
+                return true;
+            }
+            const message = 'The online submission deadline was ' + deadline + '. Leave requests must be submitted within 3 calendar days after the final leave date. Please use a parent-signed paper form.';
+            if (warningEl) {
+                warningEl.textContent = message;
+                warningEl.style.display = 'block';
+                warningEl.style.color = '#B91C1C';
+                warningEl.style.backgroundColor = '#FEE2E2';
+                warningEl.style.borderColor = 'rgba(239,68,68,0.3)';
+            }
+            if (showToast) {
+                toast(message, 'error');
+                flashFormSection(document.querySelector('.duration-section'));
+            }
+            return false;
+        }
         function timeToMinutes(t) {
             const [h, m] = t.split(':').map(Number);
             return h * 60 + m;
@@ -3406,6 +3453,7 @@
         function setupEventListeners() {
             const refreshDateState = () => {
                 calculatePeriods();
+                validateLeaveSubmissionWindow();
                 updateDateConflictWarning();
             };
             document.getElementById('fullDay').addEventListener('change', onFullDayChange);
@@ -3425,6 +3473,7 @@
             const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
             document.getElementById('fromDate').value = dateStr;
             document.getElementById('toDate').value = dateStr;
+            validateLeaveSubmissionWindow();
         }
         function previewForm() {
             const form = document.getElementById('leaveForm');
@@ -3433,6 +3482,9 @@
                 return;
             }
             if (!validateLeaveDateTimeOrder({ silent: false })) {
+                return;
+            }
+            if (!validateLeaveSubmissionWindow({ showToast: true })) {
                 return;
             }
             if (!validateNoDateConflict({ showToast: true })) {
@@ -3496,6 +3548,9 @@
         async function submitForm() {
             closeModal();
             if (!validateLeaveDateTimeOrder({ silent: false })) {
+                return;
+            }
+            if (!validateLeaveSubmissionWindow({ showToast: true })) {
                 return;
             }
             if (!validateNoDateConflict({ showToast: true })) {

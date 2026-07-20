@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="admin-build" content="admin-mobile-date-fit-2026-07-20-v4">
+<meta name="admin-build" content="admin-powerschool-session-only-2026-07-20-v5">
 <title>IBSH Attendance - Admin</title>
 <link rel="icon" href="data:,">
 <script>
@@ -3853,14 +3853,12 @@ body.admin-auth-locked > .tcm-sign-overlay { display: none !important; }
               <div class="search-bar">
                 <input type="date" id="psCrossDate" class="form-control" style="width:auto;" onchange="onPowerSchoolDateChange()">
                 <button class="btn btn-primary btn-sm" onclick="doPowerSchoolCrossCheck()">Cross-check</button>
-                <button class="btn btn-outline btn-sm" onclick="savePowerSchoolCurrentResult()">Save Result</button>
-                <button class="btn btn-outline btn-sm" onclick="clearPowerSchoolCrossCheck(true)">Clear + Save</button>
-                <button class="btn btn-success btn-sm" onclick="createPowerSchoolMissingTardies()">Create Selected Tardies</button>
+                <button class="btn btn-outline btn-sm" onclick="clearPowerSchoolCrossCheck()">Clear</button>
+                <button class="btn btn-success btn-sm" onclick="createPowerSchoolMissingTardies()" title="Create tardy records for checked students who appear in PowerSchool but did not submit tardy.html.">Add Selected Tardy Records</button>
               </div>
             </div>
             <div class="card-body ps-cross-body">
               <textarea class="form-control" id="psAbsenceInput" rows="5" placeholder="Paste CSV / TSV / copied PowerSchool rows here. Student No. is enough."></textarea>
-              <div id="psSavedHistory" class="ps-history"></div>
               <div id="psCrossRefResults"></div>
             </div>
           </div>
@@ -4459,7 +4457,6 @@ let PS_CROSSREF_INITIALIZED = false;
 let GRADE_ADVANCE_IN_PROGRESS = false;
 let GRADE_ADVANCE_PLAN = null;
 const MODAL_RETURN_FOCUS = new Map();
-const PS_CROSSREF_STORAGE_KEY = 'ibsh_ps_tardy_cross_check_history_v1';
 // ── Helpers ──────────────────────────────────────────────────────
 function today() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Taipei' });
@@ -7847,125 +7844,18 @@ function runPowerSchoolCrossCheck(dateStr, raw) {
     unknownRows: parsed.unknownRows,
   };
 }
-function psDateAdd(dateStr, days) {
-  const d = new Date(String(dateStr || today()) + 'T00:00:00Z');
-  if (Number.isNaN(d.getTime())) return today();
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-}
-function psLoadHistory() {
-  try {
-    const raw = window.localStorage ? window.localStorage.getItem(PS_CROSSREF_STORAGE_KEY) : '';
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch (_err) {
-    return {};
-  }
-}
-function psSaveHistory(history) {
-  try {
-    if (!window.localStorage) return;
-    window.localStorage.setItem(PS_CROSSREF_STORAGE_KEY, JSON.stringify(history || {}));
-  } catch (_err) {}
-}
-function psPruneHistory(history) {
-  const cutoff = psDateAdd(today(), -3);
-  const pruned = {};
-  Object.keys(history || {}).forEach(dateStr => {
-    if (dateStr >= cutoff) pruned[dateStr] = history[dateStr];
-  });
-  psSaveHistory(pruned);
-  return pruned;
-}
-function psResultSummary(result) {
-  return {
-    missing: (result && result.missing ? result.missing.length : 0),
-    filled: (result && result.filled ? result.filled.length : 0),
-    extraTardies: (result && result.extraTardies ? result.extraTardies.length : 0),
-    unknownRows: (result && result.unknownRows ? result.unknownRows.length : 0),
-    cleared: Boolean(result && result.cleared),
-  };
-}
-function emptyPowerSchoolResult(dateStr, cleared) {
-  return {
-    date: dateStr || today(),
-    missing: [],
-    filled: [],
-    extraTardies: [],
-    unknownRows: [],
-    cleared: Boolean(cleared),
-  };
-}
-function renderPowerSchoolSavedHistory(activeDate) {
-  const wrap = $('#psSavedHistory');
-  if (!wrap) return;
-  const history = psPruneHistory(psLoadHistory());
-  const rows = Object.values(history).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
-  if (!rows.length) {
-    wrap.innerHTML = '<span class="label">Saved:</span><span>No saved cross-checks for today or the past 3 days.</span>';
-    return;
-  }
-  wrap.innerHTML = '<span class="label">Saved:</span>' + rows.map(row => {
-    const summary = row.summary || {};
-    const active = row.date === activeDate ? ' active' : '';
-    const title = `Missing ${summary.missing || 0}, submitted ${summary.filled || 0}, extra ${summary.extraTardies || 0}`;
-    const label = row.cleared || summary.cleared
-      ? `${row.date} · Cleared`
-      : `${row.date} · M${summary.missing || 0}`;
-    return `<button type="button" class="btn btn-outline btn-sm${active}" title="${escapeHtml(title)}" onclick="loadPowerSchoolCrossCheckForDate('${escapeHtml(row.date)}')">${escapeHtml(label)}</button>`;
-  }).join('');
-}
-function savePowerSchoolCrossCheckResult(result, raw, options) {
-  if (!result || !result.date) return '';
-  options = options || {};
-  const trimmedRaw = String(raw || '').trim();
-  if (!trimmedRaw && !options.cleared) return '';
-  const savedAt = new Date().toISOString();
-  const history = psPruneHistory(psLoadHistory());
-  history[result.date] = {
-    date: result.date,
-    raw: trimmedRaw,
-    savedAt,
-    cleared: Boolean(options.cleared || result.cleared),
-    summary: psResultSummary(result),
-  };
-  psSaveHistory(psPruneHistory(history));
-  renderPowerSchoolSavedHistory(result.date);
-  return savedAt;
-}
 function initPowerSchoolCrossCheck() {
   if (PS_CROSSREF_INITIALIZED) return;
   PS_CROSSREF_INITIALIZED = true;
   const dateEl = $('#psCrossDate');
   if (dateEl && !dateEl.value) dateEl.value = today();
-  loadPowerSchoolCrossCheckForDate(dateEl ? dateEl.value : today(), true);
-}
-function loadPowerSchoolCrossCheckForDate(dateStr, quiet) {
-  const dateEl = $('#psCrossDate');
-  const input = $('#psAbsenceInput');
-  const box = $('#psCrossRefResults');
-  const targetDate = dateStr || today();
-  if (dateEl) dateEl.value = targetDate;
-  const history = psPruneHistory(psLoadHistory());
-  const saved = history[targetDate];
-  renderPowerSchoolSavedHistory(targetDate);
-  if (!saved) {
-    PS_CROSSREF_LAST = null;
-    if (input) input.value = '';
-    if (box) box.innerHTML = '<p style="color:var(--text-muted);margin-top:4px">No saved PowerSchool result for this date yet.</p>';
-    return;
-  }
-  if (input) input.value = saved.cleared ? '' : (saved.raw || '');
-  PS_CROSSREF_LAST = saved.cleared
-    ? emptyPowerSchoolResult(targetDate, true)
-    : runPowerSchoolCrossCheck(targetDate, saved.raw || '');
-  PS_CROSSREF_LAST.savedAt = saved.savedAt || '';
-  renderPowerSchoolCrossCheckResult(PS_CROSSREF_LAST);
-  if (!quiet) toast('Loaded saved PowerSchool result for ' + targetDate + '.', 'info');
+  try {
+    if (window.localStorage) window.localStorage.removeItem('ibsh_ps_tardy_cross_check_history_v1');
+  } catch (_err) {}
+  clearPowerSchoolCrossCheck({ quiet: true });
 }
 function onPowerSchoolDateChange() {
-  const dateStr = $('#psCrossDate')?.value || today();
-  loadPowerSchoolCrossCheckForDate(dateStr, false);
+  clearPowerSchoolCrossCheck({ quiet: true });
 }
 function renderPowerSchoolCrossCheckResult(result) {
   const box = $('#psCrossRefResults');
@@ -7974,17 +7864,11 @@ function renderPowerSchoolCrossCheckResult(result) {
     box.innerHTML = '';
     return;
   }
-  const savedMeta = result.savedAt
-    ? `<div class="ps-result-meta">Saved ${escapeHtml(fmtDateTime(result.savedAt))}; retained for today and the past 3 days of PowerSchool checks.</div>`
-    : '';
   let html = `<div class="ps-result-summary">
     <span class="flow-pill pending">Missing tardy forms: ${result.missing.length}</span>
     <span class="flow-pill done">Already submitted: ${result.filled.length}</span>
     <span class="flow-pill">Tardy not in PowerSchool: ${result.extraTardies.length}</span>
-  </div>${savedMeta}`;
-  if (result.cleared) {
-    html += '<div class="ps-result-card found"><h3>Cleared and saved</h3><div style="color:var(--text-muted);font-size:.9rem;">This date has been cleared. Paste a new PowerSchool list and run Cross-check to replace it.</div></div>';
-  }
+  </div>`;
   if (result.missing.length) {
     html += `<div class="ps-result-card missing"><h3>Missing tardy.html (${result.missing.length})</h3>`;
     html += '<table class="ps-result-table"><colgroup><col class="col-check"><col class="col-no"><col class="col-class"><col class="col-seat"><col class="col-name"></colgroup><thead><tr><th class="col-check"><input type="checkbox" checked onchange="togglePowerSchoolMissing(this)"></th><th>Student No.</th><th>Class</th><th>Seat</th><th>Name</th></tr></thead><tbody>';
@@ -8019,11 +7903,10 @@ function renderPowerSchoolCrossCheckResult(result) {
     html += `<div class="ps-result-card missing"><h3>Rows not matched to a student (${result.unknownRows.length})</h3>`;
     html += '<div style="margin-top:8px; color:var(--text-main); font-size:.85rem;">' + result.unknownRows.map(escapeHtml).join('<br>') + '</div></div>';
   }
-  if (!result.cleared && !result.missing.length && !result.filled.length && !result.extraTardies.length && !result.unknownRows.length) {
+  if (!result.missing.length && !result.filled.length && !result.extraTardies.length && !result.unknownRows.length) {
     html += '<p style="color:var(--text-muted);margin-top:12px">No PowerSchool rows matched current students.</p>';
   }
   box.innerHTML = html;
-  renderPowerSchoolSavedHistory(result.date);
 }
 function togglePowerSchoolMissing(master) {
   $$('.ps-missing-cb').forEach(cb => cb.checked = master.checked);
@@ -8036,40 +7919,15 @@ function doPowerSchoolCrossCheck() {
     return;
   }
   PS_CROSSREF_LAST = runPowerSchoolCrossCheck(dateStr, raw);
-  PS_CROSSREF_LAST.savedAt = savePowerSchoolCrossCheckResult(PS_CROSSREF_LAST, raw);
   renderPowerSchoolCrossCheckResult(PS_CROSSREF_LAST);
-  toast(PS_CROSSREF_LAST.savedAt ? ('PowerSchool result saved for ' + dateStr + '.') : 'PowerSchool cross-check complete.', 'info');
+  toast('PowerSchool cross-check complete.', 'info');
 }
-function savePowerSchoolCurrentResult() {
-  const dateStr = $('#psCrossDate')?.value || today();
-  const raw = ($('#psAbsenceInput')?.value || '').trim();
-  if (!raw) {
-    PS_CROSSREF_LAST = emptyPowerSchoolResult(dateStr, true);
-    PS_CROSSREF_LAST.savedAt = savePowerSchoolCrossCheckResult(PS_CROSSREF_LAST, '', { cleared: true });
-    renderPowerSchoolCrossCheckResult(PS_CROSSREF_LAST);
-    toast(PS_CROSSREF_LAST.savedAt ? ('Cleared PowerSchool result saved for ' + dateStr + '.') : 'PowerSchool result cleared, but could not be saved in this browser.', PS_CROSSREF_LAST.savedAt ? 'info' : 'error');
-    return;
-  }
-  if (!PS_CROSSREF_LAST || PS_CROSSREF_LAST.date !== dateStr) {
-    PS_CROSSREF_LAST = runPowerSchoolCrossCheck(dateStr, raw);
-  }
-  PS_CROSSREF_LAST.savedAt = savePowerSchoolCrossCheckResult(PS_CROSSREF_LAST, raw);
-  renderPowerSchoolCrossCheckResult(PS_CROSSREF_LAST);
-  toast(PS_CROSSREF_LAST.savedAt ? ('Saved PowerSchool result for ' + dateStr + '.') : 'Could not save this result in the browser.', PS_CROSSREF_LAST.savedAt ? 'info' : 'error');
-}
-function clearPowerSchoolCrossCheck(saveCleared) {
-  const dateStr = $('#psCrossDate')?.value || today();
+function clearPowerSchoolCrossCheck(options = {}) {
   const input = $('#psAbsenceInput');
   if (input) input.value = '';
-  PS_CROSSREF_LAST = emptyPowerSchoolResult(dateStr, true);
-  if (saveCleared) {
-    PS_CROSSREF_LAST.savedAt = savePowerSchoolCrossCheckResult(PS_CROSSREF_LAST, '', { cleared: true });
-  }
-  renderPowerSchoolCrossCheckResult(PS_CROSSREF_LAST);
-  toast(saveCleared
-    ? (PS_CROSSREF_LAST.savedAt ? ('Cleared and saved PowerSchool result for ' + dateStr + '.') : 'PowerSchool result cleared, but could not be saved in this browser.')
-    : 'PowerSchool result cleared.',
-    saveCleared && !PS_CROSSREF_LAST.savedAt ? 'error' : 'info');
+  PS_CROSSREF_LAST = null;
+  renderPowerSchoolCrossCheckResult(null);
+  if (!options.quiet) toast('PowerSchool cross-check cleared.', 'info');
 }
 async function createPowerSchoolMissingTardies() {
   if (!PS_CROSSREF_LAST) {
@@ -8100,7 +7958,6 @@ async function createPowerSchoolMissingTardies() {
     })));
     toast('Created ' + selected.length + ' tardy record(s).');
     PS_CROSSREF_LAST = runPowerSchoolCrossCheck(PS_CROSSREF_LAST.date, $('#psAbsenceInput').value || '');
-    PS_CROSSREF_LAST.savedAt = savePowerSchoolCrossCheckResult(PS_CROSSREF_LAST, $('#psAbsenceInput').value || '');
     renderPowerSchoolCrossCheckResult(PS_CROSSREF_LAST);
     refreshDashboard();
   } catch (err) {
