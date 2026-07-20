@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="admin-build" content="admin-full-role-visibility-2026-07-17-v3">
+<meta name="admin-build" content="admin-mobile-date-fit-2026-07-20-v4">
 <title>IBSH Attendance - Admin</title>
 <link rel="icon" href="data:,">
 <script>
@@ -3470,15 +3470,44 @@ body.admin-b.tcm-active .tcm-tabbar { display: grid; }
   }
   body.admin-b .mobile-date-filter {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
     align-items: center;
     gap: 8px;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
   body.admin-b .mobile-date-filter > input[type="date"] {
+    display: block;
+    -webkit-appearance: none;
+    appearance: none;
+    inline-size: 100% !important;
     width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-inline-size: 0 !important;
+    max-inline-size: 100% !important;
+    padding-inline: 6px;
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+  }
+  body.admin-b .mobile-date-filter > input[type="date"]::-webkit-date-and-time-value {
+    display: block;
+    width: 100%;
     min-width: 0;
-    padding-inline: 8px;
-    font-size: 1rem;
+    margin: 0;
+    overflow: hidden;
+    text-align: center;
+    white-space: nowrap;
+  }
+  body.admin-b .mobile-date-filter > input[type="date"]::-webkit-calendar-picker-indicator {
+    width: 18px;
+    min-width: 18px;
+    margin: 0;
+    padding: 0;
   }
   body.admin-b .mobile-date-filter > span {
     color: var(--text-muted);
