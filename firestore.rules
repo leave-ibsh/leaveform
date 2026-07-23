@@ -59,6 +59,10 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/settings/app).data;
     }
 
+    function publicSettingsDoc() {
+      return get(/databases/$(database)/documents/publicSettings/app).data;
+    }
+
     function staffEmails() {
       return exists(/databases/$(database)/documents/settings/app)
         ? settingsDoc().get('staffEmails', [])
@@ -124,6 +128,23 @@ service cloud.firestore {
 
     function currentWorkflowStage(leaveData) {
       let stages = workflowStages();
+      let idx = leaveData.get('currentStageIndex', 0);
+      return idx is int && idx >= 0 && idx < stages.size()
+        ? stages[idx]
+        : {};
+    }
+
+    // Family clients load publicSettings/app. Validate their workflow updates
+    // against that same document so a stale private settings copy cannot make
+    // a valid parent signature fail with permission-denied.
+    function familyWorkflowStages() {
+      return exists(/databases/$(database)/documents/publicSettings/app)
+        ? publicSettingsDoc().get('approvalWorkflow', [])
+        : [];
+    }
+
+    function currentFamilyWorkflowStage(leaveData) {
+      let stages = familyWorkflowStages();
       let idx = leaveData.get('currentStageIndex', 0);
       return idx is int && idx >= 0 && idx < stages.size()
         ? stages[idx]
@@ -343,7 +364,7 @@ service cloud.firestore {
               resource.data.get('stageHistory', []).size() + 1
         && request.resource.data
               .stageHistory[resource.data.get('stageHistory', []).size()]
-              .get('stageId', '') == currentWorkflowStage(resource.data).get('id', '')
+              .get('stageId', '') == currentFamilyWorkflowStage(resource.data).get('id', '')
         && request.resource.data
               .stageHistory[resource.data.get('stageHistory', []).size()]
               .get('by', '').lower() == userEmail()
@@ -398,7 +419,7 @@ service cloud.firestore {
     function isLeaveFamilyApproval() {
       return isLeaveParent(resource.data)
         && resource.data.get('status', 'pending') == 'pending'
-        && isParentWorkflowStage(currentWorkflowStage(resource.data))
+        && isParentWorkflowStage(currentFamilyWorkflowStage(resource.data))
         && changedLeaveKeys().hasOnly([
           'stageHistory',
           'currentStageIndex',

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="admin-build" content="admin-workflow-sync-2026-07-23-v6">
+<meta name="admin-build" content="admin-stage-queue-2026-07-23-v7">
 <title>IBSH Attendance - Admin</title>
 <link rel="icon" href="data:,">
 <script>
@@ -4851,7 +4851,7 @@ function refreshDashboard() {
     if (isWalkinLeave(l) && l.reconciliationStatus === 'reconciled' && !isOfficialLeave(l)) return false;
     if ((l.status || 'pending') !== 'pending') return true;
     if (isWalkinLeave(l)) return true;
-    return shouldShowLeaveToCurrentAdmin(l);
+    return hasFullAdminVisibility() || shouldShowLeaveToCurrentAdmin(l);
   });
   $('#dashTodayLeaves').textContent = visibleDashLeaves.length;
   if (visibleDashLeaves.length === 0) {
@@ -7058,14 +7058,10 @@ function isLeaveAtParentStage(leave) {
   const history = Array.isArray(leave.stageHistory) ? leave.stageHistory : [];
   return !history.some(h => h.action === 'approved' && String(h.stageId) === String(stage.id));
 }
-// Returns true if the current logged-in admin should see this leave in their pending lists.
-// - super admin / admin / discipline / dean: see every workflow stage
-// - homeroom-only staff: only see leaves currently assigned to their stage and class
+// Pending Approvals is an action inbox, not an audit list. Only show requests
+// assigned to the signed-in reviewer's current role. Admin / super admin can
+// inspect every request in Leave Logs without appearing as a signer.
 function shouldShowLeaveToCurrentAdmin(leave) {
-  if (hasFullAdminVisibility()) return true;
-  // Hide parent-pending from class-scoped stage staff.
-  if (isLeaveAtParentStage(leave)) return false;
-  // Otherwise the current stage must match the user's role and class.
   return canActOnLeaveStage(leave);
 }
 function renderPendingLeaves() {
