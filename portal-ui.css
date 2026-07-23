@@ -1223,12 +1223,19 @@ body.portal-modal-open { overflow: hidden; }
 .parent-review-summary dt { color: var(--portal-muted); font-size: 9px; font-weight: 850; }
 .parent-review-summary dd { margin: 5px 0 0; color: var(--portal-ink); font-size: 12px; line-height: 1.4; font-weight: 800; overflow-wrap: anywhere; }
 .parent-review-actions { margin-top: 16px; display: flex; gap: 9px; }
-.parent-review-actions button { min-height: 44px; border-radius: 7px; font-size: 11px; font-weight: 900; }
+.parent-review-actions button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 12px;
+    flex: 1 1 0;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+}
 .parent-review-actions button[hidden] { display: none !important; }
 .parent-review-reject { border: 1px solid #fecaca; color: #b91c1c; background: #fff; }
-.parent-review-approve { border: 0; color: #fff; background: var(--portal-green-dark); }
-.parent-review-reject { flex: 0.8 1 0; }
-.parent-review-approve,
+.parent-review-approve { border: 1px solid transparent; color: #fff; background: var(--portal-green-dark); }
 
 .desktop-new-leave-view { display: block; }
 body:not(.portal-dashboard-mode) .desktop-new-leave-view > .desktop-view-heading { display: none; }
