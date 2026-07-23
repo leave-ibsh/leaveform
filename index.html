@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="portal-build" content="index-parent-permission-sync-2026-07-23-v2">
+    <meta name="portal-build" content="index-parent-rule-diagnostics-2026-07-23-v3">
     <title>IBSH Student Leave Form</title>
     <link rel="icon" href="data:,">
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
@@ -4693,6 +4693,31 @@
             toast('This action is available only to a registered parent or guardian.', 'error');
             return false;
         }
+        function parentApprovalDiagnosticCode(leave, workflow, parentEmail) {
+            const record = leave || {};
+            const stages = Array.isArray(workflow) ? workflow : [];
+            const rawIndex = record.currentStageIndex;
+            const index = Number.isFinite(Number(rawIndex)) ? Number(rawIndex) : -1;
+            const stage = index >= 0 && index < stages.length ? stages[index] : null;
+            const nextIndex = index >= 0 && AppDB && typeof AppDB.nextApplicableStageIndex === 'function'
+                ? AppDB.nextApplicableStageIndex(stages, record, index + 1)
+                : -2;
+            const parentMatch = splitEmailList(record.parentEmails).includes(normalizeAuthEmail(parentEmail));
+            const status = String(record.status || 'pending').toLowerCase();
+            const historyCount = Array.isArray(record.stageHistory) ? record.stageHistory.length : -1;
+            const stageId = String(stage && stage.id || 'none').replace(/[^a-z0-9_-]/gi, '').slice(0, 16) || 'none';
+            const role = String(record.submittedByRole || 'none').replace(/[^a-z]/gi, '').slice(0, 10) || 'none';
+            return [
+                'PA4',
+                'p' + (parentMatch ? '1' : '0'),
+                's' + (status === 'pending' ? 'P' : status.slice(0, 1).toUpperCase()),
+                'i' + index,
+                'h' + historyCount,
+                'st' + stageId,
+                'n' + nextIndex,
+                'r' + role,
+            ].join('-');
+        }
         async function parentApproveLeave(leaveId, options = {}) {
             if (!requireParentPortalAction()) return;
             const leave = AppDB.leave().find(l => l.id === leaveId);
@@ -4757,8 +4782,9 @@
                     };
                 });
             } catch (err) {
-                console.error('[Parent approval] Firestore update failed:', err);
-                toast('The signature was not submitted. ' + (err && err.message ? err.message : 'Please try again.'), 'error');
+                const diagnosticCode = parentApprovalDiagnosticCode(leave, workflow, parentEmail);
+                console.error('[Parent approval] Firestore update failed:', err, diagnosticCode);
+                toast('The signature was not submitted. ' + (err && err.message ? err.message : 'Please try again.') + ' [' + diagnosticCode + ']', 'error');
                 return null;
             }
             if (isFinal && !options.redirectToPrint) {
