@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="portal-build" content="index-parent-review-buttons-2026-07-23-v1">
+    <meta name="portal-build" content="index-parent-sign-flow-2026-07-23-v1">
     <title>IBSH Student Leave Form</title>
     <link rel="icon" href="data:,">
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
@@ -11,7 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js?v=20260706-notify3"></script>
     <script src="shared-db.js?v=20260717-grade1000"></script>
-    <script src="signature-dialog.js?v=20260706-notify3"></script>
+    <script src="signature-dialog.js?v=20260723-parent-sign1"></script>
     <script src="notification-service.js?v=20260706-notify3"></script>
     <style>
         /* ========================================================
@@ -4688,49 +4688,6 @@
             renderPortalHome(student);
             applyMentalHealthGate();
         }
-        // Required parent comment shown before the signature pad.
-        // Returns a non-empty string when confirmed, or null when cancelled.
-        function _promptParentCommentDialog(stageName) {
-            return new Promise(resolve => {
-                const overlay = document.createElement('div');
-                overlay.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(15,23,42,0.6); display:flex; align-items:center; justify-content:center; padding:20px;';
-                overlay.innerHTML = `
-                  <div style="background:#fff; border-radius:16px; padding:28px; max-width:480px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,0.2);">
-                    <h3 style="margin:0 0 8px; font-size:1.1rem; font-weight:800;">Parent sign · Comment required</h3>
-                    <p style="color:#64748b; font-size:0.85rem; margin:0 0 16px; white-space:pre-line;">${stageName ? ('Stage: ' + stageName + '\n') : ''}Enter a comment for the next reviewer before signing.</p>
-                    <textarea id="_pCommentInput" rows="3" placeholder="Enter required comment" required aria-describedby="_pCommentError" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:10px; font-family:inherit; font-size:0.95rem; resize:vertical;"></textarea>
-                    <p id="_pCommentError" role="alert" hidden style="margin:8px 0 0; color:#b91c1c; font-size:0.82rem; font-weight:700;">Comment is required.</p>
-                    <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-                      <button id="_pCommentCancel" style="padding:8px 18px; border:1px solid #cbd5e1; background:#fff; border-radius:999px; font-weight:700; cursor:pointer;">Cancel</button>
-                      <button id="_pCommentOk" style="padding:8px 18px; border:none; background:#10b981; color:#fff; border-radius:999px; font-weight:700; cursor:pointer;">Continue → Sign</button>
-                    </div>
-                  </div>`;
-                document.body.appendChild(overlay);
-                const ta = overlay.querySelector('#_pCommentInput');
-                const error = overlay.querySelector('#_pCommentError');
-                ta.focus();
-                const close = (val) => { document.body.removeChild(overlay); resolve(val); };
-                overlay.querySelector('#_pCommentCancel').onclick = () => close(null);
-                overlay.querySelector('#_pCommentOk').onclick = () => {
-                    const value = String(ta.value || '').trim();
-                    if (!value) {
-                        ta.setAttribute('aria-invalid', 'true');
-                        ta.style.borderColor = '#b91c1c';
-                        error.hidden = false;
-                        ta.focus();
-                        return;
-                    }
-                    close(value);
-                };
-                ta.addEventListener('input', () => {
-                    if (!String(ta.value || '').trim()) return;
-                    ta.removeAttribute('aria-invalid');
-                    ta.style.borderColor = '#cbd5e1';
-                    error.hidden = true;
-                });
-                overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
-            });
-        }
         function requireParentPortalAction() {
             if (AUTH_MODE === 'parent') return true;
             toast('This action is available only to a registered parent or guardian.', 'error');
@@ -4751,47 +4708,59 @@
             const stage = workflow[leave.currentStageIndex || 0];
             if (!isParentApprovalStage(stage)) return;
             const parentEmail = (AUTH_USER && AUTH_USER.email) ? AUTH_USER.email : '';
-            const comment = await _promptParentCommentDialog(stage && stage.name);
-            if (comment === null) return; // cancelled
             if (!window.SignatureDialog || typeof window.SignatureDialog.open !== 'function') {
                 toast('Signature pad is not available. Please reload and try again.', 'error');
                 return;
             }
-            const signature = await window.SignatureDialog.open({
-                email: parentEmail,
-                title: 'Parent sign',
-                subtitle: 'Sign in the box below · ' + (stage.name || 'Parent approval'),
-                confirmText: 'Confirm signature',
-            });
+            let signature = null;
+            try {
+                signature = await window.SignatureDialog.open({
+                    email: parentEmail,
+                    title: 'Parent sign',
+                    subtitle: 'Sign in the box below · ' + (stage.name || 'Parent approval'),
+                    confirmText: 'Confirm signature',
+                });
+            } catch (err) {
+                console.error('[Parent approval] Signature dialog failed:', err);
+                toast('Unable to open the signature pad. Please reload and try again.', 'error');
+                return null;
+            }
             if (!signature) return; // cancelled
             let isFinal = false;
-            const updated = await AppDB.updateLeaveTransaction(leaveId, freshLeave => {
-                const freshStage = workflow[freshLeave.currentStageIndex || 0];
-                if (!freshLeave || String(freshLeave.status || 'pending').toLowerCase() !== 'pending' || !isParentApprovalStage(freshStage)) {
-                    throw new Error('This leave is no longer waiting for parent approval. Please refresh.');
-                }
-                const history = (freshLeave.stageHistory || []).slice();
-                const entry = {
-                    stageId: freshStage.id,
-                    stageName: freshStage.name,
-                    action: 'approved',
-                    by: parentEmail || 'parent',
-                    at: new Date().toISOString(),
-                    comment: comment,
-                    signature: signature,
-                };
-                history.push(entry);
-                const nextIdx = AppDB.nextApplicableStageIndex(workflow, freshLeave, (freshLeave.currentStageIndex || 0) + 1);
-                isFinal = nextIdx === -1;
-                // Firestore rules forbid family clients setting status='approved'
-                // directly — only staff signers can finalize. Keep status='pending'
-                // and let a staff member finalize through the admin app.
-                return {
-                    stageHistory: history,
-                    currentStageIndex: isFinal ? (freshLeave.currentStageIndex || 0) : nextIdx,
-                    status: 'pending'
-                };
-            });
+            let updated = null;
+            try {
+                updated = await AppDB.updateLeaveTransaction(leaveId, freshLeave => {
+                    const freshStage = workflow[freshLeave.currentStageIndex || 0];
+                    if (!freshLeave || String(freshLeave.status || 'pending').toLowerCase() !== 'pending' || !isParentApprovalStage(freshStage)) {
+                        throw new Error('This leave is no longer waiting for parent approval. Please refresh.');
+                    }
+                    const history = (freshLeave.stageHistory || []).slice();
+                    const entry = {
+                        stageId: freshStage.id,
+                        stageName: freshStage.name,
+                        action: 'approved',
+                        by: parentEmail || 'parent',
+                        at: new Date().toISOString(),
+                        comment: String(options.comment || '').trim(),
+                        signature: signature,
+                    };
+                    history.push(entry);
+                    const nextIdx = AppDB.nextApplicableStageIndex(workflow, freshLeave, (freshLeave.currentStageIndex || 0) + 1);
+                    isFinal = nextIdx === -1;
+                    // Firestore rules forbid family clients setting status='approved'
+                    // directly — only staff signers can finalize. Keep status='pending'
+                    // and let a staff member finalize through the admin app.
+                    return {
+                        stageHistory: history,
+                        currentStageIndex: isFinal ? (freshLeave.currentStageIndex || 0) : nextIdx,
+                        status: 'pending'
+                    };
+                });
+            } catch (err) {
+                console.error('[Parent approval] Firestore update failed:', err);
+                toast('The signature was not submitted. ' + (err && err.message ? err.message : 'Please try again.'), 'error');
+                return null;
+            }
             if (isFinal && !options.redirectToPrint) {
                 toast('Signature recorded. A staff member will finalize this leave shortly.', 'info');
             }
@@ -4799,15 +4768,20 @@
                 await autoReconcileWalkinsForApprovedLeave(updated);
             }
             if (window.IBSHNotifications && updated) {
-                const notifyResult = await window.IBSHNotifications.notifyNext(updated);
-                const notifyDiagnosis = typeof window.IBSHNotifications.diagnose === 'function'
-                    ? window.IBSHNotifications.diagnose(window.IBSHNotifications.actionForCurrentStage(updated), updated)
-                    : null;
-                console.info('[Notifications] Parent approval notification result:', notifyResult, notifyDiagnosis);
-                if (!isFinal && notifyResult && notifyResult.skipped) {
-                    toast('Signature recorded, but the homeroom email was skipped. Please ask admin to check Notifications and homeroom recipients.', 'error');
-                } else if (notifyResult && notifyResult.ok === false) {
-                    toast('Signature recorded, but the email notification failed. Please ask admin to check GAS deployment.', 'error');
+                try {
+                    const notifyResult = await window.IBSHNotifications.notifyNext(updated);
+                    const notifyDiagnosis = typeof window.IBSHNotifications.diagnose === 'function'
+                        ? window.IBSHNotifications.diagnose(window.IBSHNotifications.actionForCurrentStage(updated), updated)
+                        : null;
+                    console.info('[Notifications] Parent approval notification result:', notifyResult, notifyDiagnosis);
+                    if (!isFinal && notifyResult && notifyResult.skipped) {
+                        toast('Signature recorded, but the homeroom email was skipped. Please ask admin to check Notifications and homeroom recipients.', 'error');
+                    } else if (notifyResult && notifyResult.ok === false) {
+                        toast('Signature recorded, but the email notification failed. Please ask admin to check GAS deployment.', 'error');
+                    }
+                } catch (err) {
+                    console.error('[Notifications] Parent approval notification failed:', err);
+                    toast('Signature recorded, but the email notification failed. Please ask admin to check Notifications.', 'error');
                 }
             }
             renderSideToolbar(CURRENT_STUDENT);
@@ -4821,8 +4795,7 @@
             const leave = AppDB.leave().find(l => l.id === leaveId);
             if (!leave) return;
             if (!isMakeupApprovalRequest(leave)) {
-                await parentApproveLeave(leaveId);
-                return;
+                return parentApproveLeave(leaveId);
             }
             const studentLeaves = AppDB.getLeavesByStudentNo(leave.studentNo || '');
             if (requiresPaperMakeup(leave, studentLeaves)) {
@@ -4834,7 +4807,7 @@
                 window.location.href = leavePrintUrl(leave, 'existing');
                 return;
             }
-            await parentApproveLeave(leaveId, {
+            return parentApproveLeave(leaveId, {
                 redirectToPrint: options.redirectToPrint !== false
             });
         }
@@ -5640,13 +5613,14 @@
         async function approveReviewedLeave() {
             if (!requireParentPortalAction()) return;
             const leaveId = PARENT_REVIEW_LEAVE_ID;
-            closeParentReview();
             if (!leaveId) return;
             const leave = AppDB.leave().find(item => item.id === leaveId);
             if (leave && isMakeupApprovalRequest(leave)) {
-                await parentSignMakeupLeave(leaveId);
+                const updated = await parentSignMakeupLeave(leaveId);
+                if (updated) closeParentReview();
             } else {
-                await parentApproveLeave(leaveId);
+                const updated = await parentApproveLeave(leaveId);
+                if (updated) closeParentReview();
             }
         }
         async function rejectReviewedLeave() {

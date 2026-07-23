@@ -253,6 +253,8 @@
     const overlay = document.getElementById('sigdlgOverlay');
     if (overlay) overlay.classList.remove('show');
     document.documentElement.classList.remove('sigdlg-open');
+    const confirmBtn = document.getElementById('sigdlgConfirmBtn');
+    if (confirmBtn) confirmBtn.disabled = false;
     const r = _activeResolver;
     _activeResolver = null;
     if (r) r(value);
@@ -322,7 +324,9 @@
     _bindOnce();
     document.getElementById('sigdlgTitle').textContent = title;
     document.getElementById('sigdlgSubtitle').textContent = subtitle;
-    document.getElementById('sigdlgConfirmBtn').textContent = options.confirmText || 'Confirm';
+    const confirmBtn = document.getElementById('sigdlgConfirmBtn');
+    confirmBtn.textContent = options.confirmText || 'Confirm';
+    confirmBtn.disabled = false;
     _setStatus('');
     _canvasController.clear();
     // Try to load existing signature
