@@ -1189,7 +1189,7 @@ body.portal-modal-open { overflow: hidden; }
 .parent-review-approve,
 
 .desktop-new-leave-view { display: block; }
-body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { display: none; }
+body:not(.portal-dashboard-mode) .desktop-new-leave-view > .desktop-view-heading { display: none; }
 .desktop-new-leave-view > .alert,
 .desktop-new-leave-view > .contact-info,
 .desktop-new-leave-view > #leaveForm {
@@ -1240,29 +1240,29 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
 
 @media (min-width: 641px) {
     #mainLayout > main.container > .header { display: none; }
-    body.portal-parent-mode {
+    body.portal-dashboard-mode {
         padding: 20px;
         background-color: #edf2f0;
     }
-    body.portal-parent-mode .profile-overview-grid { display: none; }
-    body.portal-parent-mode .layout-wrapper {
+    body.portal-dashboard-mode .profile-overview-grid { display: none; }
+    body.portal-dashboard-mode .layout-wrapper {
         max-width: 1540px;
         gap: 14px;
         align-items: flex-start;
     }
-    body.portal-parent-mode #mainLayout > main.container {
+    body.portal-dashboard-mode #mainLayout > main.container {
         overflow: visible;
         border: 0;
         border-radius: 0;
         background: transparent;
         box-shadow: none;
     }
-    body.portal-parent-mode #mainLayout > main.container > .form-content { padding: 0; }
-    body.portal-parent-mode .desktop-parent-home { padding: 0; background: transparent; }
+    body.portal-dashboard-mode #mainLayout > main.container > .form-content { padding: 0; }
+    body.portal-dashboard-mode .desktop-parent-home { padding: 0; background: transparent; }
 }
 
 @media (min-width: 901px) {
-    body.portal-parent-mode .desktop-portal-sidebar {
+    body.portal-dashboard-mode .desktop-portal-sidebar {
         width: 230px;
         min-height: calc(100vh - 40px);
         position: sticky;
@@ -1280,66 +1280,66 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
         -webkit-backdrop-filter: blur(24px) saturate(150%);
     }
 
-    body.portal-parent-mode .portal-kicker { font-size: 12px; }
-    body.portal-parent-mode .desktop-app-bar h1,
-    body.portal-parent-mode .desktop-view-heading h1 { font-size: 28px; }
-    body.portal-parent-mode .desktop-account-area > span { font-size: 13px; }
-    body.portal-parent-mode .portal-home-attention h2 { font-size: 20px; }
-    body.portal-parent-mode .portal-home-attention > div > p:last-child { font-size: 13px; }
-    body.portal-parent-mode .portal-home-attention > button { min-height: 42px; padding-inline: 15px; font-size: 12px; }
-    body.portal-parent-mode .desktop-panel-heading h2 { font-size: 18px; }
-    body.portal-parent-mode .desktop-panel-heading > button,
-    body.portal-parent-mode .desktop-view-heading > button { font-size: 12px; }
-    body.portal-parent-mode .desktop-current-student strong { font-size: clamp(24px, 2.1vw, 32px); }
-    body.portal-parent-mode .desktop-current-student small { font-size: clamp(15px, 1.25vw, 18px); }
-    body.portal-parent-mode .student-switch-button small { font-size: 11px; }
-    body.portal-parent-mode .student-switch-button strong,
-    body.portal-parent-mode .student-switch-action { font-size: 13px; }
-    body.portal-parent-mode .desktop-parent-home .portal-home-summary strong { font-size: 32px; }
-    body.portal-parent-mode .desktop-parent-home .portal-home-summary small { font-size: 12px; }
-    body.portal-parent-mode .portal-status-pill { min-height: 29px; padding-inline: 10px; font-size: 11px; }
-    body.portal-parent-mode .desktop-parent-home .portal-home-current > div strong { font-size: 15px; }
-    body.portal-parent-mode .desktop-parent-home .portal-home-current > div small { font-size: 12px; }
-    body.portal-parent-mode .desktop-parent-home .portal-home-date small { font-size: 9px; }
-    body.portal-parent-mode .desktop-parent-home .portal-home-date strong { font-size: 23px; }
-    body.portal-parent-mode .desktop-parent-home .portal-workflow-step { min-height: 66px; grid-template-columns: 32px minmax(0, 1fr) auto; }
-    body.portal-parent-mode .desktop-parent-home .portal-workflow-line { left: 15px; top: 41px; bottom: -25px; }
-    body.portal-parent-mode .desktop-parent-home .portal-workflow-dot { width: 32px; height: 32px; font-size: 13px; }
-    body.portal-parent-mode .desktop-parent-home .portal-workflow-step strong { font-size: 14px; }
-    body.portal-parent-mode .desktop-parent-home .portal-workflow-step small { font-size: 12px; }
-    body.portal-parent-mode .desktop-parent-home .portal-workflow-step > b { font-size: 13px; }
-    body.portal-parent-mode .desktop-parent-home .portal-recent-row { min-height: 72px; }
-    body.portal-parent-mode .desktop-parent-home .portal-recent-date strong { font-size: 21px; }
-    body.portal-parent-mode .desktop-parent-home .portal-recent-date small { font-size: 10px; }
-    body.portal-parent-mode .desktop-parent-home .portal-recent-row > span:nth-child(2) strong { font-size: 14px; }
-    body.portal-parent-mode .desktop-parent-home .portal-recent-row > span:nth-child(2) small { font-size: 12px; }
-    body.portal-parent-mode .desktop-parent-home .portal-recent-row > b { font-size: 22px; }
-    body.portal-parent-mode .desktop-workflow-request,
-    body.portal-parent-mode .desktop-workflow-notice,
-    body.portal-parent-mode .desktop-workflow-condition { font-size: 12px; }
-    body.portal-parent-mode .desktop-sidebar-brand span { font-size: 14px; }
-    body.portal-parent-mode .desktop-nav-button { font-size: 14px; }
-    body.portal-parent-mode .desktop-stats-note { font-size: 12px; }
-    body.portal-parent-mode .desktop-stat-item > span { font-size: 11px; }
-    body.portal-parent-mode .desktop-stat-item > strong { font-size: 32px; }
-    body.portal-parent-mode .desktop-stat-item > small { font-size: 11px; }
-    body.portal-parent-mode .desktop-request-tools label { font-size: 11px; }
-    body.portal-parent-mode .desktop-request-tools input,
-    body.portal-parent-mode .desktop-request-tools select { font-size: 14px; }
-    body.portal-parent-mode .desktop-request-table th { font-size: 11px; }
-    body.portal-parent-mode .desktop-request-table td { font-size: 13px; }
-    body.portal-parent-mode .desktop-request-table td > small { font-size: 11px; }
-    body.portal-parent-mode .desktop-calendar-weekdays span { font-size: 11px; }
-    body.portal-parent-mode .desktop-calendar-day > span { font-size: 12px; }
-    body.portal-parent-mode .desktop-calendar-day small,
-    body.portal-parent-mode .desktop-calendar-day b { font-size: 9px; }
-    body.portal-parent-mode .desktop-calendar-list-panel .portal-recent-date strong { font-size: 20px; }
-    body.portal-parent-mode .desktop-calendar-list-panel .portal-recent-date small { font-size: 10px; }
-    body.portal-parent-mode .desktop-calendar-list-panel .portal-recent-row > span:nth-child(2) strong { font-size: 14px; }
-    body.portal-parent-mode .desktop-calendar-list-panel .portal-recent-row > span:nth-child(2) small { font-size: 12px; }
-    body.portal-parent-mode .parent-review-summary dt { font-size: 11px; }
-    body.portal-parent-mode .parent-review-summary dd { font-size: 14px; }
-    body.portal-parent-mode .parent-review-actions button { font-size: 13px; }
+    body.portal-dashboard-mode .portal-kicker { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-app-bar h1,
+    body.portal-dashboard-mode .desktop-view-heading h1 { font-size: 28px; }
+    body.portal-dashboard-mode .desktop-account-area > span { font-size: 13px; }
+    body.portal-dashboard-mode .portal-home-attention h2 { font-size: 20px; }
+    body.portal-dashboard-mode .portal-home-attention > div > p:last-child { font-size: 13px; }
+    body.portal-dashboard-mode .portal-home-attention > button { min-height: 42px; padding-inline: 15px; font-size: 12px; }
+    body.portal-dashboard-mode .desktop-panel-heading h2 { font-size: 18px; }
+    body.portal-dashboard-mode .desktop-panel-heading > button,
+    body.portal-dashboard-mode .desktop-view-heading > button { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-current-student strong { font-size: clamp(24px, 2.1vw, 32px); }
+    body.portal-dashboard-mode .desktop-current-student small { font-size: clamp(15px, 1.25vw, 18px); }
+    body.portal-dashboard-mode .student-switch-button small { font-size: 11px; }
+    body.portal-dashboard-mode .student-switch-button strong,
+    body.portal-dashboard-mode .student-switch-action { font-size: 13px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-home-summary strong { font-size: 32px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-home-summary small { font-size: 12px; }
+    body.portal-dashboard-mode .portal-status-pill { min-height: 29px; padding-inline: 10px; font-size: 11px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-home-current > div strong { font-size: 15px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-home-current > div small { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-home-date small { font-size: 9px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-home-date strong { font-size: 23px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-workflow-step { min-height: 66px; grid-template-columns: 32px minmax(0, 1fr) auto; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-workflow-line { left: 15px; top: 41px; bottom: -25px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-workflow-dot { width: 32px; height: 32px; font-size: 13px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-workflow-step strong { font-size: 14px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-workflow-step small { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-workflow-step > b { font-size: 13px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-recent-row { min-height: 72px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-recent-date strong { font-size: 21px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-recent-date small { font-size: 10px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-recent-row > span:nth-child(2) strong { font-size: 14px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-recent-row > span:nth-child(2) small { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-parent-home .portal-recent-row > b { font-size: 22px; }
+    body.portal-dashboard-mode .desktop-workflow-request,
+    body.portal-dashboard-mode .desktop-workflow-notice,
+    body.portal-dashboard-mode .desktop-workflow-condition { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-sidebar-brand span { font-size: 14px; }
+    body.portal-dashboard-mode .desktop-nav-button { font-size: 14px; }
+    body.portal-dashboard-mode .desktop-stats-note { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-stat-item > span { font-size: 11px; }
+    body.portal-dashboard-mode .desktop-stat-item > strong { font-size: 32px; }
+    body.portal-dashboard-mode .desktop-stat-item > small { font-size: 11px; }
+    body.portal-dashboard-mode .desktop-request-tools label { font-size: 11px; }
+    body.portal-dashboard-mode .desktop-request-tools input,
+    body.portal-dashboard-mode .desktop-request-tools select { font-size: 14px; }
+    body.portal-dashboard-mode .desktop-request-table th { font-size: 11px; }
+    body.portal-dashboard-mode .desktop-request-table td { font-size: 13px; }
+    body.portal-dashboard-mode .desktop-request-table td > small { font-size: 11px; }
+    body.portal-dashboard-mode .desktop-calendar-weekdays span { font-size: 11px; }
+    body.portal-dashboard-mode .desktop-calendar-day > span { font-size: 12px; }
+    body.portal-dashboard-mode .desktop-calendar-day small,
+    body.portal-dashboard-mode .desktop-calendar-day b { font-size: 9px; }
+    body.portal-dashboard-mode .desktop-calendar-list-panel .portal-recent-date strong { font-size: 20px; }
+    body.portal-dashboard-mode .desktop-calendar-list-panel .portal-recent-date small { font-size: 10px; }
+    body.portal-dashboard-mode .desktop-calendar-list-panel .portal-recent-row > span:nth-child(2) strong { font-size: 14px; }
+    body.portal-dashboard-mode .desktop-calendar-list-panel .portal-recent-row > span:nth-child(2) small { font-size: 12px; }
+    body.portal-dashboard-mode .parent-review-summary dt { font-size: 11px; }
+    body.portal-dashboard-mode .parent-review-summary dd { font-size: 14px; }
+    body.portal-dashboard-mode .parent-review-actions button { font-size: 13px; }
 }
 
 @media (max-width: 1180px) and (min-width: 901px) {
@@ -1355,8 +1355,8 @@ body:not(.portal-parent-mode) .desktop-new-leave-view > .desktop-view-heading { 
     .portal-desktop-login { grid-template-columns: 1fr 390px; }
     .portal-desktop-story { padding: 38px; }
     .portal-desktop-panel { margin: 24px; }
-    body.portal-parent-mode .layout-wrapper { flex-direction: column; }
-    body.portal-parent-mode .desktop-portal-sidebar {
+    body.portal-dashboard-mode .layout-wrapper { flex-direction: column; }
+    body.portal-dashboard-mode .desktop-portal-sidebar {
         width: 100%;
         position: static;
         display: block;

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="portal-build" content="index-three-day-submit-window-2026-07-20-v3">
+    <meta name="portal-build" content="index-shared-dashboard-2026-07-23-v1">
     <title>IBSH Student Leave Form</title>
     <link rel="icon" href="data:,">
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
@@ -2198,7 +2198,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="portal-ui.css?v=20260717-inline-makeup1">
+    <link rel="stylesheet" href="portal-ui.css?v=20260723-shared-dashboard1">
 </head>
 <body data-mscreen="login">
     <!-- ═══ Mobile iOS Shell (≤640px only — desktop is unaffected) ═══ -->
@@ -2427,7 +2427,7 @@
     </div>
     <!-- Main Layout -->
     <div class="layout-wrapper" id="mainLayout" style="display:none;">
-        <aside class="desktop-portal-sidebar" aria-label="Parent portal navigation">
+        <aside class="desktop-portal-sidebar" aria-label="Leave portal navigation">
             <header class="desktop-sidebar-brand"><strong>IBSH</strong><span>Leave Portal</span></header>
             <nav class="desktop-sidebar-nav">
                 <button type="button" class="desktop-nav-button is-active" data-desktop-view="dashboard" onclick="navigateDesktopPortal('desktopParentHome', this)"><span aria-hidden="true">⌂</span>Dashboard</button>
@@ -2449,7 +2449,7 @@
                 </div>
                 <section class="desktop-parent-home" id="desktopParentHome" hidden>
                     <header class="desktop-app-bar">
-                        <div><p class="portal-kicker">Parent portal</p><h1>Dashboard</h1></div>
+                        <div><p class="portal-kicker" id="dHomeKicker">Leave portal</p><h1>Dashboard</h1></div>
                         <div class="desktop-account-area"><span id="dHomeRole">Parent</span><button type="button" class="portal-home-signout" onclick="signOutAndReset()">Sign out</button></div>
                     </header>
                     <section class="portal-home-attention" id="dHomeAttention">
@@ -2847,14 +2847,17 @@
         async function initApp(mode, payload) {
             AUTH_MODE = mode;
             CURRENT_RECONCILIATION_SOURCE_ID = '';
-            document.body.classList.toggle('portal-parent-mode', mode === 'parent');
+            document.body.classList.add('portal-dashboard-mode');
             const desktopParentHome = document.getElementById('desktopParentHome');
-            if (desktopParentHome) desktopParentHome.hidden = mode !== 'parent';
+            if (desktopParentHome) desktopParentHome.hidden = false;
             const desktopNewLeaveView = document.getElementById('desktopNewLeaveView');
-            if (desktopNewLeaveView) desktopNewLeaveView.hidden = mode === 'parent';
+            if (desktopNewLeaveView) desktopNewLeaveView.hidden = true;
             ['desktopRequestsView', 'desktopCalendarView'].forEach(id => {
                 const view = document.getElementById(id);
                 if (view) view.hidden = true;
+            });
+            document.querySelectorAll('.desktop-nav-button').forEach(button => {
+                button.classList.toggle('is-active', button.dataset.desktopView === 'dashboard');
             });
             if (mode === 'student') {
                 CURRENT_STUDENT = payload;
@@ -2880,12 +2883,10 @@
             if (!route) return;
             if (route === 'new-leave') {
                 if (mIsMobile()) mGoApply();
-                else if (AUTH_MODE === 'parent') openDesktopNewLeave();
-                else scrollToLeaveForm();
+                else openDesktopNewLeave();
             } else if (route === 'records') {
                 if (mIsMobile()) mGoRecords();
-                else if (AUTH_MODE === 'parent') openDesktopRequests();
-                else document.getElementById('leaveDashboard')?.scrollIntoView({ block: 'start' });
+                else openDesktopRequests();
             }
             history.replaceState({}, '', window.location.pathname + window.location.search);
         }
@@ -4725,7 +4726,13 @@
                 overlay.addEventListener('click', e => { if (e.target === overlay) close(null); });
             });
         }
+        function requireParentPortalAction() {
+            if (AUTH_MODE === 'parent') return true;
+            toast('This action is available only to a registered parent or guardian.', 'error');
+            return false;
+        }
         async function parentApproveLeave(leaveId, options = {}) {
+            if (!requireParentPortalAction()) return;
             const leave = AppDB.leave().find(l => l.id === leaveId);
             if (!leave) return;
             const studentLeaves = AppDB.getLeavesByStudentNo(leave.studentNo || '');
@@ -4805,6 +4812,7 @@
             return updated;
         }
         async function parentSignMakeupLeave(leaveId, options = {}) {
+            if (!requireParentPortalAction()) return;
             const leave = AppDB.leave().find(l => l.id === leaveId);
             if (!leave) return;
             if (!isMakeupApprovalRequest(leave)) {
@@ -4836,6 +4844,7 @@
             return trimmed;
         }
         async function parentRejectLeave(leaveId) {
+            if (!requireParentPortalAction()) return;
             const leave = AppDB.leave().find(l => l.id === leaveId);
             if (!leave) return;
             if (isMakeupApprovalRequest(leave)) {
@@ -5469,6 +5478,9 @@
                 portalHomeSet(prefix, 'Meta', (prefix === 'dHome' ? desktopMeta : meta) || 'Student account');
                 portalHomeSet(prefix, 'Avatar', portalStudentInitials(student));
                 portalHomeSet(prefix, 'Role', AUTH_MODE === 'parent' ? 'Parent' : 'Student');
+                if (prefix === 'dHome') {
+                    portalHomeSet(prefix, 'Kicker', AUTH_MODE === 'parent' ? 'Parent portal' : 'Student portal');
+                }
                 portalHomeSet(prefix, 'PendingCount', String(pending.length));
                 portalHomeSet(prefix, 'ApprovedCount', String(approved.length));
                 portalHomeSet(prefix, 'MakeupCount', String(makeup.length));
@@ -5479,7 +5491,7 @@
                     const attentionLeave = signatureLeaves[0];
                     const makeupSignature = isMakeupApprovalRequest(attentionLeave);
                     portalHomeSet(prefix, 'AttentionKicker', 'Action required');
-                    portalHomeSet(prefix, 'AttentionTitle', signatureLeaves.length + ' form' + (signatureLeaves.length === 1 ? '' : 's') + ' need your signature');
+                    portalHomeSet(prefix, 'AttentionTitle', signatureLeaves.length + ' form' + (signatureLeaves.length === 1 ? ' needs' : 's need') + ' your signature');
                     portalHomeSet(prefix, 'AttentionText', makeupSignature ? 'Add the required comment and parent signature to continue.' : 'Review and sign before the school approval process can continue.');
                     attentionButton.textContent = makeupSignature ? 'Parent sign' : 'Review & sign';
                 } else if (PORTAL_HOME_ATTENTION.type === 'makeup') {
@@ -5566,6 +5578,7 @@
             }
         }
         async function openParentReview(leaveId) {
+            if (!requireParentPortalAction()) return;
             const leave = AppDB.leave().find(item => item.id === leaveId);
             if (!leave) return;
             if (isMakeupApprovalRequest(leave)) {
@@ -5599,6 +5612,7 @@
             document.body.classList.remove('portal-modal-open');
         }
         async function approveReviewedLeave() {
+            if (!requireParentPortalAction()) return;
             const leaveId = PARENT_REVIEW_LEAVE_ID;
             closeParentReview();
             if (!leaveId) return;
@@ -5610,6 +5624,7 @@
             }
         }
         async function rejectReviewedLeave() {
+            if (!requireParentPortalAction()) return;
             const leaveId = PARENT_REVIEW_LEAVE_ID;
             closeParentReview();
             if (!leaveId) return;
@@ -5627,7 +5642,7 @@
             if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         function scrollToLeaveForm() {
-            if (!mIsMobile() && AUTH_MODE === 'parent') {
+            if (!mIsMobile()) {
                 openDesktopNewLeave();
                 return;
             }
@@ -5636,7 +5651,7 @@
         }
         function navigateDesktopPortal(targetId, button) {
             const viewIds = ['desktopParentHome', 'desktopNewLeaveView', 'desktopRequestsView', 'desktopCalendarView'];
-            if (AUTH_MODE === 'parent' && !mIsMobile()) {
+            if (!mIsMobile()) {
                 viewIds.forEach(id => {
                     const view = document.getElementById(id);
                     if (view) view.hidden = id !== targetId;
