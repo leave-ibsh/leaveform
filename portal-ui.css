@@ -934,6 +934,30 @@ body.portal-modal-open { overflow: hidden; }
     background: rgba(209, 250, 229, 0.6);
     box-shadow: inset 3px 0 0 var(--portal-green-dark);
 }
+.portal-recent-entry { position: relative; }
+.portal-recent-entry.has-approval .portal-recent-row { padding-right: 116px; }
+.portal-inline-approval {
+    min-height: 36px;
+    padding: 0 12px;
+    position: absolute;
+    right: 34px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 0;
+    border-radius: 7px;
+    color: #fff;
+    background: var(--portal-orange);
+    box-shadow: 0 5px 14px rgba(234, 88, 12, 0.18);
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.portal-inline-approval:hover { filter: brightness(0.96); }
+.portal-inline-approval:focus-visible {
+    outline: 3px solid rgba(234, 88, 12, 0.24);
+    outline-offset: 2px;
+}
 
 .portal-recent-date { width: 38px; text-align: center; }
 .portal-recent-date strong,
@@ -1155,7 +1179,25 @@ body.portal-modal-open { overflow: hidden; }
 .desktop-request-table td { padding: 12px 10px; border-bottom: 1px solid var(--line); color: var(--portal-ink); font-size: 10px; line-height: 1.35; vertical-align: middle; }
 .desktop-request-table td > small { display: block; margin-top: 3px; color: var(--portal-muted); font-size: 8px; }
 .desktop-type-label { color: var(--portal-ink); font-weight: 800; }
-.desktop-table-action { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; color: var(--portal-green-dark); background: rgba(255, 255, 255, 0.72); text-decoration: none; font-size: 18px; }
+.desktop-table-actions { display: flex; align-items: center; gap: 8px; }
+.desktop-approval-action {
+    min-height: 34px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 7px;
+    color: #fff;
+    background: var(--portal-green-dark);
+    font-size: 10px;
+    line-height: 1;
+    font-weight: 900;
+    white-space: nowrap;
+}
+.desktop-approval-action:hover { filter: brightness(0.96); }
+.desktop-approval-action:focus-visible {
+    outline: 3px solid rgba(16, 185, 129, 0.24);
+    outline-offset: 2px;
+}
+.desktop-table-action { width: 30px; height: 30px; flex: 0 0 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 7px; color: var(--portal-green-dark); background: rgba(255, 255, 255, 0.72); text-decoration: none; font-size: 18px; }
 
 .desktop-calendar-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.5fr); gap: 14px; }
 .desktop-calendar-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

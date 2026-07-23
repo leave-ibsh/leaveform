@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="portal-build" content="index-shared-dashboard-2026-07-23-v1">
+    <meta name="portal-build" content="index-parent-approval-actions-2026-07-23-v1">
     <title>IBSH Student Leave Form</title>
     <link rel="icon" href="data:,">
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
@@ -2198,7 +2198,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="portal-ui.css?v=20260723-shared-dashboard1">
+    <link rel="stylesheet" href="portal-ui.css?v=20260723-parent-approval1">
 </head>
 <body data-mscreen="login">
     <!-- ═══ Mobile iOS Shell (≤640px only — desktop is unaffected) ═══ -->
@@ -4287,6 +4287,11 @@
             const history = Array.isArray(rec.stageHistory) ? rec.stageHistory : [];
             return !history.some(h => h.action === 'approved' && String(h.stageId) === String(stage.id));
         }
+        function canParentApproveLeave(rec) {
+            return AUTH_MODE === 'parent'
+                && portalRecordStatus(rec) === 'pending'
+                && isLeaveAtParentStage(rec);
+        }
         function statusLabelForLeave(rec) {
             const status = rec.status || 'pending';
             if (status === 'pending') return 'Pending Approval';
@@ -5314,11 +5319,15 @@
                 const parts = portalDateParts(rec.fromDate);
                 const statusInfo = portalRecentStatusInfo(rec, allLeaves);
                 const selected = prefix === 'dHome' && String(rec.id || '') === String(DESKTOP_SELECTED_LEAVE_ID || '');
-                return '<button type="button" class="portal-recent-row portal-recent-row-button' + (selected ? ' is-selected' : '') + '" data-leave-id="' + escapeHtml(rec.id || '') + '" aria-pressed="' + (selected ? 'true' : 'false') + '" onclick="openPortalRecentRequest(\'' + escapeJsString(prefix) + '\', this.dataset.leaveId)">' +
+                const row = '<button type="button" class="portal-recent-row portal-recent-row-button' + (selected ? ' is-selected' : '') + '" data-leave-id="' + escapeHtml(rec.id || '') + '" aria-pressed="' + (selected ? 'true' : 'false') + '" onclick="openPortalRecentRequest(\'' + escapeJsString(prefix) + '\', this.dataset.leaveId)">' +
                     '<span class="portal-recent-date"><strong>' + escapeHtml(parts.day) + '</strong><small>' + escapeHtml(parts.month) + '</small></span>' +
                     '<span><strong>' + escapeHtml(portalRecentTitle(rec, allLeaves)) + '</strong><small>' + escapeHtml(portalRecentSubtitle(rec, allLeaves)) + '</small></span>' +
                     '<em class="portal-status-pill ' + escapeHtml(statusInfo.cls) + '">' + escapeHtml(statusInfo.label) + '</em><b>›</b>' +
                 '</button>';
+                if (prefix !== 'dHome' || !canParentApproveLeave(rec)) return row;
+                return '<div class="portal-recent-entry has-approval">' + row +
+                    '<button type="button" class="portal-inline-approval" onclick="openParentApprovalFromList(\'' + escapeJsString(rec.id || '') + '\')" aria-label="Open parent approval for ' + escapeHtml(portalRecentTitle(rec, allLeaves)) + '">Approval</button>' +
+                '</div>';
             }).join('');
         }
         function selectDesktopHomeRequest(leaveId) {
@@ -5382,6 +5391,9 @@
                 const href = rec.id
                     ? (isCompletedMakeupWalkin(rec) ? leavePrintUrl(rec, '') : 'leave-form.html?id=' + encodeURIComponent(rec.id))
                     : '#';
+                const approvalAction = canParentApproveLeave(rec)
+                    ? '<button type="button" class="desktop-approval-action" onclick="openParentApprovalFromList(\'' + escapeJsString(rec.id || '') + '\')">Approval</button>'
+                    : '';
                 return '<tr>' +
                     '<td><strong>' + escapeHtml(rec.fromDate || '—') + '</strong><small>' + escapeHtml(rec.toDate && rec.toDate !== rec.fromDate ? 'to ' + rec.toDate : '') + '</small></td>' +
                     '<td><span class="desktop-type-label t-' + escapeHtml(leaveTypeKey(rec)) + '">' + escapeHtml(leaveTypeLabel(leaveTypeKey(rec))) + '</span></td>' +
@@ -5389,7 +5401,7 @@
                     '<td><strong>' + periodCount(rec) + '</strong> periods</td>' +
                     '<td><span class="portal-status-pill ' + escapeHtml(status) + '">' + escapeHtml(portalStatusLabel(status)) + '</span></td>' +
                     '<td>' + escapeHtml(portalCurrentStageLabel(rec)) + '</td>' +
-                    '<td><a class="desktop-table-action" href="' + href + '" aria-label="View request">›</a></td>' +
+                    '<td><div class="desktop-table-actions">' + approvalAction + '<a class="desktop-table-action" href="' + href + '" aria-label="View request">›</a></div></td>' +
                 '</tr>';
             }).join('');
             container.innerHTML = '<table class="desktop-request-table"><thead><tr><th>Date</th><th>Type</th><th>Student</th><th>Periods</th><th>Status</th><th>Current stage</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table>';
@@ -5604,6 +5616,20 @@
             modal.hidden = false;
             modal.setAttribute('aria-hidden', 'false');
             document.body.classList.add('portal-modal-open');
+        }
+        async function openParentApprovalFromList(leaveId) {
+            if (!requireParentPortalAction()) return;
+            const leave = AppDB.leave().find(item => String(item && item.id || '') === String(leaveId || ''));
+            if (!leave) {
+                toast('Leave request not found.', 'error');
+                return;
+            }
+            if (!canParentApproveLeave(leave)) {
+                toast('This request is no longer waiting for parent approval.', 'error');
+                renderSideToolbar(CURRENT_STUDENT);
+                return;
+            }
+            await openParentReview(leave.id);
         }
         function closeParentReview() {
             const modal = document.getElementById('parentReviewModal');
