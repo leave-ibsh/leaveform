@@ -2,6 +2,7 @@ rules_version = '2';
 
 // =============================================================================
 // IBSH Tardy & Leave – Firestore Security Rules (Role-based, v2)
+// Rules build: initial-student-parent-approval-2026-07-23-v3
 // =============================================================================
 // Project : tardy-and-leave
 // Auth模式 :
@@ -395,6 +396,35 @@ service cloud.firestore {
         );
     }
 
+    // Student-created requests always begin at the parent stage with no
+    // history. Handle that first parent decision without depending on either
+    // settings document, while keeping the transition tightly constrained:
+    // the authorized parent may append only their own decision and may move
+    // an approval forward by exactly one stage.
+    function isInitialStudentLeaveParentApproval() {
+      return isLeaveParent(resource.data)
+        && resource.data.get('submittedByRole', '') == 'student'
+        && resource.data.get('status', 'pending') == 'pending'
+        && resource.data.get('currentStageIndex', 0) == 0
+        && resource.data.get('stageHistory', []).size() == 0
+        && changedLeaveKeys().hasOnly([
+          'stageHistory',
+          'currentStageIndex',
+          'status'
+        ])
+        && request.resource.data.get('stageHistory', []).size() == 1
+        && request.resource.data.stageHistory[0].get('by', '').lower() == userEmail()
+        && request.resource.data.stageHistory[0].get('action', '') in ['approved', 'rejected']
+        && (
+          (request.resource.data.stageHistory[0].get('action', '') == 'approved'
+            && request.resource.data.get('status', 'pending') == 'pending'
+            && request.resource.data.get('currentStageIndex', 0) == 1)
+          || (request.resource.data.stageHistory[0].get('action', '') == 'rejected'
+            && request.resource.data.get('status', '') == 'rejected'
+            && request.resource.data.get('currentStageIndex', 0) == 0)
+        );
+    }
+
     function canCreateLeave(leaveData) {
       return (isStaff()
           && canManageStudentRecord(leaveData)
@@ -517,6 +547,8 @@ service cloud.firestore {
         || (isStaff() && isAdmin() && isWalkinLifecycleUpdate())
         // Parent-signed paper form: office verification completes the linked form.
         || (isStaff() && isAdmin() && canManageStudentRecord(resource.data) && isPaperMakeupLifecycleUpdate())
+        // Student-created request: first parent decision, exactly one stage.
+        || isInitialStudentLeaveParentApproval()
         // 家長補簽 — 嚴格 append-only，僅可加自己簽的那一筆
         || isLeaveFamilyApproval()
         // 家長/學生補假單同步登記欄位

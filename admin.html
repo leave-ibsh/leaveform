@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="admin-build" content="admin-stage-queue-2026-07-23-v7">
+<meta name="admin-build" content="admin-audit-queue-2026-07-23-v8">
 <title>IBSH Attendance - Admin</title>
 <link rel="icon" href="data:,">
 <script>
@@ -7058,10 +7058,10 @@ function isLeaveAtParentStage(leave) {
   const history = Array.isArray(leave.stageHistory) ? leave.stageHistory : [];
   return !history.some(h => h.action === 'approved' && String(h.stageId) === String(stage.id));
 }
-// Pending Approvals is an action inbox, not an audit list. Only show requests
-// assigned to the signed-in reviewer's current role. Admin / super admin can
-// inspect every request in Leave Logs without appearing as a signer.
+// Admin / super admin retain a view-only audit queue. Stage reviewers only
+// see requests currently assigned to their role.
 function shouldShowLeaveToCurrentAdmin(leave) {
+  if (isAdminRole()) return true;
   return canActOnLeaveStage(leave);
 }
 function renderPendingLeaves() {
