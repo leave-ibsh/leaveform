@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="portal-build" content="index-parent-sign-flow-2026-07-23-v1">
+    <meta name="portal-build" content="index-parent-permission-sync-2026-07-23-v2">
     <title>IBSH Student Leave Form</title>
     <link rel="icon" href="data:,">
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
     <script src="firebase-config.js?v=20260706-notify3"></script>
-    <script src="shared-db.js?v=20260717-grade1000"></script>
+    <script src="shared-db.js?v=20260723-workflow-sync2"></script>
     <script src="signature-dialog.js?v=20260723-parent-sign1"></script>
     <script src="notification-service.js?v=20260706-notify3"></script>
     <style>
@@ -4835,24 +4835,37 @@
             if (!isParentApprovalStage(stage)) return;
             const reason = _promptReasonInline('Reason for rejection');
             if (!reason) return;
-            const updated = await AppDB.updateLeaveTransaction(leaveId, freshLeave => {
-                const freshStage = workflow[freshLeave.currentStageIndex || 0];
-                if (!freshLeave || String(freshLeave.status || 'pending').toLowerCase() !== 'pending' || !isParentApprovalStage(freshStage)) {
-                    throw new Error('This leave is no longer waiting for parent approval. Please refresh.');
-                }
-                const history = (freshLeave.stageHistory || []).slice();
-                history.push({
-                    stageId: freshStage.id, stageName: freshStage.name, action: 'rejected',
-                    by: AUTH_USER ? (AUTH_USER.email || 'parent') : 'parent',
-                    at: new Date().toISOString(),
-                    comment: reason,
+            let updated = null;
+            try {
+                updated = await AppDB.updateLeaveTransaction(leaveId, freshLeave => {
+                    const freshStage = workflow[freshLeave.currentStageIndex || 0];
+                    if (!freshLeave || String(freshLeave.status || 'pending').toLowerCase() !== 'pending' || !isParentApprovalStage(freshStage)) {
+                        throw new Error('This leave is no longer waiting for parent approval. Please refresh.');
+                    }
+                    const history = (freshLeave.stageHistory || []).slice();
+                    history.push({
+                        stageId: freshStage.id, stageName: freshStage.name, action: 'rejected',
+                        by: AUTH_USER ? (AUTH_USER.email || 'parent') : 'parent',
+                        at: new Date().toISOString(),
+                        comment: reason,
+                    });
+                    return { stageHistory: history, currentStageIndex: freshLeave.currentStageIndex || 0, status: 'rejected' };
                 });
-                return { stageHistory: history, currentStageIndex: freshLeave.currentStageIndex || 0, status: 'rejected' };
-            });
+            } catch (err) {
+                console.error('[Parent rejection] Firestore update failed:', err);
+                toast('The rejection was not submitted. ' + (err && err.message ? err.message : 'Please try again.'), 'error');
+                return null;
+            }
             if (window.IBSHNotifications && updated) {
-                window.IBSHNotifications.notifyResult(updated);
+                try {
+                    await window.IBSHNotifications.notifyResult(updated);
+                } catch (err) {
+                    console.error('[Notifications] Parent rejection notification failed:', err);
+                    toast('Rejection recorded, but the email notification failed. Please ask admin to check Notifications.', 'error');
+                }
             }
             renderSideToolbar(CURRENT_STUDENT);
+            return updated;
         }
         // Boot: initialise the Firebase SDK and wire up auth.
         // AppDB.init() is deferred until AFTER sign-in (Firestore rules require auth).

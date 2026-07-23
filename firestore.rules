@@ -130,6 +130,14 @@ service cloud.firestore {
         : {};
     }
 
+    // Current settings explicitly store approverType. Accept the stable
+    // legacy stage IDs as a migration fallback so older settings documents
+    // do not block legitimate parent approvals before the next admin sync.
+    function isParentWorkflowStage(stage) {
+      return stage.get('approverType', '') == 'parent'
+        || stage.get('id', '') in ['parent', 'guardian'];
+    }
+
     // 該 staff 是否可做「簽核流程」更新？
     // admin / super admin 只可查看簽核狀態，不可簽名或推進關卡。
     // 非 admin staff 只能簽自己角色對應的當前關卡。
@@ -390,7 +398,7 @@ service cloud.firestore {
     function isLeaveFamilyApproval() {
       return isLeaveParent(resource.data)
         && resource.data.get('status', 'pending') == 'pending'
-        && currentWorkflowStage(resource.data).get('approverType', '') == 'parent'
+        && isParentWorkflowStage(currentWorkflowStage(resource.data))
         && changedLeaveKeys().hasOnly([
           'stageHistory',
           'currentStageIndex',

@@ -1614,8 +1614,26 @@
     return _cloneSettings();
   }
   async function syncPublicSettings() {
-    const publicSettings = _publicSettingsFrom(_cloneSettings());
-    await _queueWrite(() => _db.collection(COLLECTIONS.publicSettings).doc(SETTINGS_DOC_ID).set(publicSettings, { merge: true }));
+    // Keep the private settings used by Firestore Rules and the sanitized
+    // public settings used by the portal on the same normalized workflow.
+    // Older settings documents may not contain approverType/staffRole fields.
+    const normalizedSettings = _cloneSettings();
+    const publicSettings = _publicSettingsFrom(normalizedSettings);
+    _settings = normalizedSettings;
+    await _queueWrite(async () => {
+      const batch = _db.batch();
+      batch.set(
+        _db.collection(COLLECTIONS.settings).doc(SETTINGS_DOC_ID),
+        normalizedSettings,
+        { merge: true }
+      );
+      batch.set(
+        _db.collection(COLLECTIONS.publicSettings).doc(SETTINGS_DOC_ID),
+        publicSettings,
+        { merge: true }
+      );
+      await batch.commit();
+    });
     return publicSettings;
   }
   // ---------------------------------------------------------------------------
